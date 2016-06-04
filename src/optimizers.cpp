@@ -3,14 +3,14 @@
 #include "Eigen/Eigen/Dense"
 #include <cfloat>
 
-void NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator> &E,
+std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator> &E,
                        std::vector<std::shared_ptr<AbstractInput> > &inputs,
                        std::vector<double> &c0)
 {
     double F_previous = 8888888;
     double lambda = 1;
     double nu = 2;
-    bool threading = true;
+    bool threading = false;
 
     std::vector<double> c = c0;
     
@@ -62,4 +62,5 @@ void NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator> &E,
         F_previous = F;
         if (F < DBL_EPSILON) { break; }
     }
+    return c;
 }
