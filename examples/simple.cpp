@@ -12,6 +12,29 @@
 
 using namespace NISTfit;
 
+class SaturationPressureEvaluator : public AbstractNumericEvaluator {
+protected:
+    std::vector<double> m_e; // Exponents for terms in saturation pressure equation
+public:
+    SaturationPressureEvaluator(const std::vector<double> &e) : m_e(e) {};
+    std::shared_ptr<AbstractOutput> evaluate_one(const std::shared_ptr<AbstractInput> &pIn) const {
+        // Cast to the derived type
+        NumericInput *in = static_cast<NumericInput*>(pIn.get());
+        // The row in the Jacobian for L-M
+        std::vector<double> Jacobian_row(m_e.size());
+        double theta = in->x();
+        // Do the calculation
+        double y = 0;
+        for (std::size_t i = 0; i < m_e.size(); ++i) {
+            double term = pow(theta, m_e[i]);
+            y += m_c[i] * term;
+            Jacobian_row[i] = term;
+        }
+        // Return the output
+        return std::shared_ptr<AbstractOutput>(new NumericOutput(*in, y, std::move(Jacobian_row)));
+    }
+};
+
 void fit_waterpanc() {
     
     // Theta = 1 - T/Tc
@@ -29,6 +52,7 @@ void fit_waterpanc() {
     LevenbergMarquadt(eval, q, c);
     int rr = 0;
 }
+
 
 void run_LM(bool threading)
 {
