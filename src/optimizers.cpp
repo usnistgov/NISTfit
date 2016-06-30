@@ -60,7 +60,7 @@ std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator
             }
         }
         F_previous = F;
-        if (F < DBL_EPSILON) { break; }
+        if (F < DBL_EPSILON || std::abs(lambda) < DBL_EPSILON) { break; }
     }
     return c;
 }

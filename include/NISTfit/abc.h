@@ -4,6 +4,8 @@
 #include <vector>
 #include <future>
 #include <memory>
+#include <iterator>
+
 #include "Eigen/Eigen/Dense"
 
 namespace NISTfit{
@@ -37,13 +39,14 @@ namespace NISTfit{
             for (std::size_t i = iStart; i < iStop; ++i) {
                 outs.emplace_back(evaluate_one(q[i]));
             }
-            return outs;
+            return std::move(outs);
         };
         
         std::vector<std::shared_ptr<AbstractOutput> > evaluate_parallel(std::vector<std::shared_ptr<AbstractInput> > & q, short Nthreads) const{
             std::size_t Nmax = q.size();
             std::size_t Lchunk = Nmax / Nthreads;
             std::vector<std::future<std::vector<std::shared_ptr<AbstractOutput> > > > futures;
+            futures.reserve(Nthreads);
             for (long i = 0; i < Nthreads; ++i) {
                 std::size_t iStart = i*Lchunk;
                 // The last thread gets the remainder, shorter than the others if Nmax mod Nthreads != 0
@@ -55,7 +58,7 @@ namespace NISTfit{
             outs.reserve(Nmax); // Pre-allocate the appropriate size
             for (auto &e : futures) {
                 std::vector<std::shared_ptr<AbstractOutput> > thread_results = e.get();
-                outs.insert(outs.end(), thread_results.begin(), thread_results.end());
+                std::move(thread_results.begin(), thread_results.end(), std::inserter(outs, outs.end()));
             }
             return std::move(outs);
         };
