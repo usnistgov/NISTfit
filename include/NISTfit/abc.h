@@ -33,7 +33,7 @@ namespace NISTfit{
         std::vector<std::shared_ptr<AbstractOutput> > evaluate_serial(std::vector<std::shared_ptr<AbstractInput> > & q,
                                                                       std::size_t iStart, std::size_t iStop) const {
             std::vector<std::shared_ptr<AbstractOutput> > outs;
-            outs.reserve(q.size());
+            outs.reserve(iStop - iStart);
             for (std::size_t i = iStart; i < iStop; ++i) {
                 outs.emplace_back(evaluate_one(q[i]));
             }
@@ -46,26 +46,18 @@ namespace NISTfit{
             std::vector<std::future<std::vector<std::shared_ptr<AbstractOutput> > > > futures;
             for (long i = 0; i < Nthreads; ++i) {
                 std::size_t iStart = i*Lchunk;
-                std::size_t iEnd = (i + 1)*Lchunk;
+                // The last thread gets the remainder, shorter than the others if Nmax mod Nthreads != 0
+                std::size_t iEnd = (i == Nthreads-1) ? q.size() : (i + 1)*Lchunk;
                 futures.push_back(std::async(std::launch::async, &AbstractEvaluator::evaluate_serial, this, std::ref(q), iStart, iEnd));
-            }
-            // Wait for the threads to terminate
-            for (; ; ) // Infinite loop
-            {
-                bool keep_going = true;
-                for (auto &e : futures) {
-                    keep_going = keep_going && !e.valid();
-                }
-                if (!keep_going) { break; }
             }
             // Collect the outputs
             std::vector<std::shared_ptr<AbstractOutput> > outs;
             outs.reserve(Nmax); // Pre-allocate the appropriate size
             for (auto &e : futures) {
-                std::vector<std::shared_ptr<AbstractOutput> > thread_results = e.get(); // :( Copy
+                std::vector<std::shared_ptr<AbstractOutput> > thread_results = e.get();
                 outs.insert(outs.end(), thread_results.begin(), thread_results.end());
             }
-            return outs;
+            return std::move(outs);
         };
         /** Construct the Jacobian matrix, where each entry in Jacobian matrix is given by
          * \f[ J_{ij} = \frac{\partial (y_{\rm fit} - y_{\rm given})_i}{\partial c_i} \f]

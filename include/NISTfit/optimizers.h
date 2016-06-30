@@ -13,7 +13,8 @@ namespace NISTfit{
      */
     std::vector<double> LevenbergMarquadt(std::shared_ptr<AbstractEvaluator> &E,
                            std::vector<std::shared_ptr<AbstractInput> > &inputs,
-                           std::vector<double> &c0);
+                           std::vector<double> &c0,
+                           bool threading = false);
 
 } /* NISTfit */
 

@@ -5,12 +5,12 @@
 
 std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator> &E,
                        std::vector<std::shared_ptr<AbstractInput> > &inputs,
-                       std::vector<double> &c0)
+                       std::vector<double> &c0,
+                       bool threading)
 {
     double F_previous = 8888888;
     double lambda = 1;
     double nu = 2;
-    bool threading = false;
 
     std::vector<double> c = c0;
     
