@@ -4,7 +4,6 @@
 #include <cfloat>
 
 std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator> &E,
-                       std::vector<std::shared_ptr<AbstractInput> > &inputs,
                        std::vector<double> &c0,
                        bool threading)
 {
@@ -20,13 +19,13 @@ std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator
         
         E->set_coefficients(c);
         
-        auto outs = (
-                     threading // Check if threading
-                     ? E->evaluate_parallel(inputs, std::thread::hardware_concurrency()) // Using threading
-                     : E->evaluate_serial(inputs, 0, inputs.size()) // Not using threading
-                     );
-        Eigen::MatrixXd J = E->get_Jacobian_matrix(outs);
-        Eigen::VectorXd r = E->get_error_vector(outs);
+        (
+         threading // Check if threading
+         ? E->evaluate_parallel(std::thread::hardware_concurrency()) // Using threading
+         : E->evaluate_serial(0, E->get_outputs_size(), 0) // Not using threading
+        );
+        const Eigen::MatrixXd &J = E->get_Jacobian_matrix();
+        const Eigen::VectorXd &r = E->get_error_vector();
         
         double F = r.squaredNorm();
         if (counter == 0) {
