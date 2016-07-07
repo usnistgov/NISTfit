@@ -31,6 +31,7 @@ public:
             y += c[i] * term;
             Jacobian_row[i] = term;
         }
+        std::cout << y << std::endl;
         m_y_calc = y;
     }
 };
@@ -145,8 +146,8 @@ double fit_polynomial(bool threading, long Nmax)
 
 int main(){
     std::vector<double> times;
-    for (auto &threading : { false }) {
-        auto t = fit_polynomial(threading, 10000);
+    for (auto &threading : { true, false }) {
+        auto t = fit_polynomial(threading, 80);
         times.push_back(t);
     }
     if (times.size() > 1)

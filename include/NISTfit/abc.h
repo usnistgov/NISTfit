@@ -5,9 +5,14 @@
 #include <future>
 #include <memory>
 #include <iterator>
+#include <iostream>
+#include <numeric>      // std::accumulate
 
 #include "Eigen/Eigen/Dense"
 
+static std::mutex mtx;           // mutex for critical section
+
+enum ThreadFlags{DATA_AVAILABLE, DATA_PROCESSED, KILL_THREAD};
 namespace NISTfit{
     
     /// The abstract base class for the inputs
@@ -35,11 +40,17 @@ namespace NISTfit{
         std::vector<std::shared_ptr<AbstractOutput> > m_outputs;
         Eigen::MatrixXd J;
         Eigen::VectorXd r;
+        std::vector<std::thread> threads; ///< The threads used to evaluate the threads
+        std::vector<ThreadFlags> thread_flag; ///< A flag for thread status
     public:
         virtual void set_coefficients(const std::vector<double> &) = 0;
         virtual const std::vector<double> & get_const_coefficients() = 0;
-        std::size_t get_outputs_size(){ return m_outputs.size(); };
-        
+        std::size_t get_outputs_size() { return m_outputs.size(); };
+
+        ~AbstractEvaluator() {
+            kill_threads();
+        }
+
         /** Evaluate the residual function in serial operation for the input vector indices in the range [iInputStart, iInputStop)
          * @param iInputStart The starting index (included in the output)
          * @param iInputStop The stopping index (NOT included in the output) (a la Python)
@@ -51,24 +62,76 @@ namespace NISTfit{
                 j++;
             }
         };
-        
-        void evaluate_parallel(short Nthreads) const{
+
+        void evaluate_threaded(std::size_t iInputStart, std::size_t iInputStop, std::size_t iOutputStart, ThreadFlags &flag) {
+            for (;;) { // Infinite loop
+                switch (flag) {
+                case DATA_AVAILABLE:
+                {
+                    /// Run the evaluations, and set the outputs
+                    std::size_t j = iOutputStart;
+                    for (std::size_t i = iInputStart; i < iInputStop; ++i) {
+                        m_outputs[j]->evaluate_one();
+                        j++;
+                    }
+                    /// Set the completion flag - I'm done for now
+                    flag = DATA_PROCESSED;
+                    break;
+                }
+                case DATA_PROCESSED: break;
+                case KILL_THREAD: return;
+                }
+            }
+        };
+
+        void setup_threads(short Nthreads) {
             std::size_t Nmax = m_outputs.size();
             std::size_t Lchunk = Nmax / Nthreads;
-            std::vector<std::future<void> > futures;
-            futures.reserve(Nthreads);
+            thread_flag.resize(Nthreads);
+            std::fill(thread_flag.begin(), thread_flag.end(), DATA_PROCESSED);
             for (long i = 0; i < Nthreads; ++i) {
                 std::size_t iStart = i*Lchunk;
                 // The last thread gets the remainder, shorter than the others if Nmax mod Nthreads != 0
-                std::size_t iEnd = ((i == Nthreads-1) ? m_outputs.size() : (i + 1)*Lchunk);
-                futures.push_back(std::async(std::launch::async, &AbstractEvaluator::evaluate_serial, this,
-                                             iStart, iEnd, iStart
-                                  ));
+                std::size_t iEnd = ((i == Nthreads - 1) ? m_outputs.size() : (i + 1)*Lchunk);
+                threads.push_back(
+                    std::thread(&AbstractEvaluator::evaluate_threaded, this, iStart, iEnd, iStart, std::ref(thread_flag[i]))
+                );
             }
-            // Wait for all the outputs
-            for (auto &e : futures) {
-                e.get();
+        }
+        void kill_threads() {
+            // Signal the threads to stop
+            mtx.lock();
+            std::fill(thread_flag.begin(), thread_flag.end(), KILL_THREAD);
+            mtx.unlock();
+            // Join the threads (wait for them to terminate)
+            for (auto &e : threads) {
+                e.join();
             }
+            // Clear them
+            threads.clear();
+        }
+        
+        void evaluate_parallel(short Nthreads){
+            
+            if (threads.empty()) { 
+                // Set up threads but put them in holding pattern
+                setup_threads(Nthreads); 
+            }
+
+            // Set the thread completion flag to fire the threads
+            // and allow them to evaluate in parallel
+            mtx.lock();
+            std::fill(thread_flag.begin(), thread_flag.end(), DATA_AVAILABLE);
+            mtx.unlock();
+            
+            // Wait for all the threads
+            bool done;
+            do{ 
+                done = true;
+                for (const auto &e : thread_flag) {
+                    if (e != DATA_PROCESSED) { done = false; break; }
+                }
+            } while (!done);
         };
         /** Construct the Jacobian matrix, where each entry in Jacobian matrix is given by
          * \f[ J_{ij} = \frac{\partial (y_{\rm fit} - y_{\rm given})_i}{\partial c_i} \f]
