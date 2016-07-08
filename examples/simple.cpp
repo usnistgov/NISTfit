@@ -37,10 +37,7 @@ public:
 
 /// The class for the evaluation of a single output value for a single input value
 class SaturationPressureEvaluator : public AbstractNumericEvaluator {
-    std::vector<double> m_c;
 public:
-    void set_coefficients(const std::vector<double> &c) { m_c = c; };
-    const std::vector<double> & get_const_coefficients() { return m_c; };
     SaturationPressureEvaluator(const std::vector<double> &e,
                                 const std::vector<std::shared_ptr<NumericInput> > &inputs)
     {

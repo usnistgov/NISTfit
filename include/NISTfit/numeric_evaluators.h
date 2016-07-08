@@ -31,10 +31,7 @@ namespace NISTfit{
     
     /// The class for the evaluation of a single output value for a single input value
     class PolynomialEvaluator : public AbstractNumericEvaluator {
-        std::vector<double> m_c;
     public:
-        void set_coefficients(const std::vector<double> &c){ m_c = c; };
-        const std::vector<double> & get_const_coefficients(){ return m_c; };
         PolynomialEvaluator(std::size_t order, const std::vector<std::shared_ptr<NumericInput> > &inputs)
         {
             for (auto &in: inputs){

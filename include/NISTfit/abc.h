@@ -191,7 +191,11 @@ namespace NISTfit{
     
     /// The class for the evaluation of a single output value for a single input value
     class AbstractNumericEvaluator : public AbstractEvaluator {
-        
+    protected:
+        std::vector<double> m_c;
+    public:
+        void set_coefficients(const std::vector<double> &c){ m_c = c; };
+        const std::vector<double> & get_const_coefficients(){ return m_c; };
     };
 
     /// The data structure for an output for the single y output variable
