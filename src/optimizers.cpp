@@ -5,7 +5,8 @@
 
 std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator> &E,
                        std::vector<double> &c0,
-                       bool threading)
+                       bool threading,
+                       short Nthreads)
 {
     double F_previous = 8888888;
     double lambda = 1;
@@ -21,7 +22,7 @@ std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator
         
         (
          threading // Check if threading
-         ? E->evaluate_parallel(std::thread::hardware_concurrency()) // Using threading
+         ? E->evaluate_parallel( (Nthreads < 0) ? std::thread::hardware_concurrency() : Nthreads) // Using threading
          : E->evaluate_serial(0, E->get_outputs_size(), 0) // Not using threading
         );
         const Eigen::MatrixXd &J = E->get_Jacobian_matrix();

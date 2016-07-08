@@ -11,7 +11,6 @@
 
 #include "Eigen/Eigen/Dense"
 
-enum ThreadFlags{DATA_AVAILABLE, DATA_PROCESSED, KILL_THREAD};
 namespace NISTfit{
     
     /// The abstract base class for the inputs
@@ -40,14 +39,22 @@ namespace NISTfit{
         Eigen::MatrixXd J;
         Eigen::VectorXd r;
         std::vector<std::thread> threads; ///< The threads used to evaluate the threads
-        std::deque<std::atomic<ThreadFlags> > thread_flag; ///< A flag for thread status
+        std::deque<std::atomic<bool> > thread_run; ///< A flag for thread status
+        bool quit; 
+        std::mutex quit_mutex;
     public:
         virtual void set_coefficients(const std::vector<double> &) = 0;
         virtual const std::vector<double> & get_const_coefficients() = 0;
         std::size_t get_outputs_size() { return m_outputs.size(); };
 
         ~AbstractEvaluator() {
-            kill_threads();
+            if (!threads.empty()) {
+                auto startTime = std::chrono::system_clock::now();
+                kill_threads();
+                auto endTime = std::chrono::system_clock::now();
+                double thread_kill_elap = std::chrono::duration<double>(endTime - startTime).count();
+                //std::cout << "thread teardown:" << thread_kill_elap << " s\n";
+            }
         }
 
         /** Evaluate the residual function in serial operation for the input vector indices in the range [iInputStart, iInputStop)
@@ -55,85 +62,94 @@ namespace NISTfit{
          * @param iInputStop The stopping index (NOT included in the output) (a la Python)
          */
         void evaluate_serial(std::size_t iInputStart, std::size_t iInputStop, std::size_t iOutputStart) const {
-            std::size_t j = iOutputStart;
-            for (std::size_t i = iInputStart; i < iInputStop; ++i) {
-                m_outputs[j]->evaluate_one();
-                j++;
+            int Nrepeat = 1;
+            for (int rep = 0; rep < Nrepeat; ++rep) {
+                std::size_t j = iOutputStart;
+                for (std::size_t i = iInputStart; i < iInputStop; ++i) {
+                    m_outputs[j]->evaluate_one();
+                    j++;
+                }
             }
         };
 
-        void evaluate_threaded(std::size_t iInputStart, std::size_t iInputStop, std::size_t iOutputStart, std::atomic<ThreadFlags> &flag) {
-            for (;;) { // Infinite loop
-                switch (flag.load(std::memory_order::memory_order_relaxed) ) {
-                case DATA_AVAILABLE:
-                {
-                    /// Run the evaluations, and set the outputs
-                    std::size_t j = iOutputStart;
-                    for (std::size_t i = iInputStart; i < iInputStop; ++i) {
-                        m_outputs[j]->evaluate_one();
-                        j++;
-                    }
-                    /// Set the completion flag - I'm done for now
-                    flag.store(DATA_PROCESSED, std::memory_order::memory_order_relaxed);
-                    break;
-                }
-                case DATA_PROCESSED: break;
-                case KILL_THREAD: return;
+        // In an infinite loop, either run the evaluation, or don't do anything.
+        void evaluate_threaded(std::size_t iInputStart, std::size_t iInputStop, std::size_t iOutputStart, std::atomic<bool> &run) {
+            while(!quit){
+                if (run.load()){
+                    // Do the evaluation - setting values are thread-safe so long as ranges set do not overlap
+                    evaluate_serial(iInputStart, iInputStop, iInputStart);
+
+                    // Set the completion flag - I'm done for now
+                    run.store(false, std::memory_order::memory_order_relaxed);
                 }
             }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         };
 
         void setup_threads(short Nthreads) {
             std::size_t Nmax = m_outputs.size();
             std::size_t Lchunk = Nmax / Nthreads;
-            thread_flag.resize(Nthreads);
+
+            // Set up the atomics for communicating with the threads
+            thread_run.resize(Nthreads);
             for (std::size_t i = 0; i < Nthreads; ++i) {
-                thread_flag[i].store(DATA_PROCESSED, std::memory_order::memory_order_relaxed);
+                thread_run[i] = false;
             }
+            
+            // Set the quit flag to false (no mutex needed since only main thread active at this point)
+            quit = false;
+
             for (long i = 0; i < Nthreads; ++i) {
                 std::size_t iStart = i*Lchunk;
                 // The last thread gets the remainder, shorter than the others if Nmax mod Nthreads != 0
                 std::size_t iEnd = ((i == Nthreads - 1) ? m_outputs.size() : (i + 1)*Lchunk);
+
                 threads.push_back(
-                    std::thread(&AbstractEvaluator::evaluate_threaded, this, iStart, iEnd, iStart, std::ref(thread_flag[i]))
+                    std::thread(&AbstractEvaluator::evaluate_threaded, this, iStart, iEnd, iStart, std::ref(thread_run[i]))
                 );
+                
             }
         }
         void kill_threads() {
+            
             // Signal the threads to stop
-            for (std::size_t i = 0; i < thread_flag.size(); ++i) {
-                thread_flag[i].store(KILL_THREAD, std::memory_order::memory_order_relaxed);
-            }
+            quit_mutex.lock();
+            quit = true;
+            quit_mutex.unlock();
+            
             // Join the threads (wait for them to terminate)
-            for (auto &e : threads) {
-                e.join();
-            }
-            // Clear them
+            for (auto &e : threads) {  e.join(); }
+
             threads.clear();
         }
         
         void evaluate_parallel(short Nthreads){
             
-            if (threads.empty()) { 
-                // Set up threads but put them in holding pattern
-                setup_threads(Nthreads); 
+            if (threads.empty()) {
+                auto startTime = std::chrono::system_clock::now();
+                    // Set up threads but put them in holding pattern
+                    setup_threads(Nthreads);
+                auto endTime = std::chrono::system_clock::now();
+                double thread_setup_elap = std::chrono::duration<double>(endTime - startTime).count();
+                //std::cout << "thread setup:" << thread_setup_elap << " s\n";
             }
 
             // Set the thread completion flag to fire the threads
             // and allow them to evaluate in parallel
-            for (std::size_t i = 0; i < thread_flag.size(); ++i) {
-                thread_flag[i].store(DATA_AVAILABLE, std::memory_order::memory_order_relaxed);
+            for (std::size_t i = 0; i < thread_run.size(); ++i) {
+                thread_run[i].store(true, std::memory_order::memory_order_relaxed);
             }
             
             // Wait for all the threads
             bool done;
             do{ 
                 done = true;
-                for (const auto &e : thread_flag) {
-                    if (e != DATA_PROCESSED) { done = false; break; }
+                for (const auto &running : thread_run) {
+                    if (running) { done = false; break; }
                 }
             } while (!done);
         };
+
         /** Construct the Jacobian matrix, where each entry in Jacobian matrix is given by
          * \f[ J_{ij} = \frac{\partial (y_{\rm fit} - y_{\rm given})_i}{\partial c_i} \f]
          * It is constructed by taking the rows of the Jacobian matrix stored in instances of AbstractOutput
@@ -150,6 +166,7 @@ namespace NISTfit{
             }
             return J;
         };
+
         /** /brief Construct the residual vector of residuals for each data point
          * \f[ r_i = (y_{\rm fit} - y_{\rm given})_i\f]
          */
@@ -175,7 +192,6 @@ namespace NISTfit{
     /// The class for the evaluation of a single output value for a single input value
     class AbstractNumericEvaluator : public AbstractEvaluator {
         
-        
     };
 
     /// The data structure for an output for the single y output variable
@@ -193,7 +209,6 @@ namespace NISTfit{
             void resize(std::size_t N){ Jacobian_row.resize(N); };
             std::shared_ptr<AbstractInput> get_input(){ return m_in; };
     };
-
     
 }; /* namespace NISTfit */
 
