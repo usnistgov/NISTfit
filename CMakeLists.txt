@@ -15,7 +15,12 @@ if (${CMAKE_GENERATOR} MATCHES  "Unix Makefile")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 endif()
 
-# 
 if (NISTFIT_EXAMPLES)
-	add_executable(simple ${CMAKE_CURRENT_SOURCE_DIR}/examples/simple.cpp ${APP_SOURCES})
+    add_executable(simple ${CMAKE_CURRENT_SOURCE_DIR}/examples/simple.cpp ${APP_SOURCES})
+elseif (NISTFIT_STATIC_LIBRARY)
+    add_library(NISTfit STATIC ${APP_SOURCES})
+    if (CMAKE_VERSION VERSION_GREATER 3.0)
+        # Add target include directories for easy linking with other applications
+        target_include_directories(NISTfit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    endif()
 endif()
