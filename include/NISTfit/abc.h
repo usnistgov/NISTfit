@@ -30,6 +30,26 @@ namespace NISTfit{
 
     };
 
+    // Forward definitions
+    struct ThreadData;
+    class AbstractEvaluator;
+
+    // Convenience type definition
+    using job = std::packaged_task<void(ThreadData *)>;
+
+    // Some data associated to each thread.
+    struct ThreadData
+    {
+        int id; // Could use thread::id, but this is filled before the thread is started
+        std::thread t; // The thread object
+        std::queue<job> jobs; // The job queue
+        std::condition_variable cv; // The condition variable to wait for threads
+        std::mutex m; // Mutex used for avoiding data races
+        AbstractEvaluator *eval; // Evaluator
+        std::size_t iStart, iEnd; 
+        bool stop = false; // When set, this flag tells the thread that it should exit
+    };
+
     /// The abstract base class for the evaluator
     class AbstractEvaluator
     {
@@ -38,8 +58,8 @@ namespace NISTfit{
         std::vector<std::shared_ptr<AbstractOutput> > m_outputs;
         Eigen::MatrixXd J;
         Eigen::VectorXd r;
-        std::vector<std::thread> threads; ///< The threads used to evaluate the threads
-        std::deque<std::atomic<bool> > thread_run; ///< A flag for thread status
+        std::vector<ThreadData> thread_data; ///< The thread data for the threads
+        std::vector<std::future<void>> futures;
         bool quit; 
         std::mutex quit_mutex;
     public:
@@ -48,7 +68,7 @@ namespace NISTfit{
         std::size_t get_outputs_size() { return m_outputs.size(); };
 
         ~AbstractEvaluator() {
-            if (!threads.empty()) {
+            if (!thread_data.empty()) {
                 auto startTime = std::chrono::system_clock::now();
                 kill_threads();
                 auto endTime = std::chrono::system_clock::now();
@@ -72,82 +92,99 @@ namespace NISTfit{
             }
         };
 
-        // In an infinite loop, either run the evaluation, or don't do anything.
-        void evaluate_threaded(std::size_t iInputStart, std::size_t iInputStop, std::size_t iOutputStart, std::atomic<bool> &run) {
-            while(!quit){
-                if (run.load()){
-                    // Do the evaluation - setting values are thread-safe so long as ranges set do not overlap
-                    evaluate_serial(iInputStart, iInputStop, iInputStart);
+        // In an infinite loop, either run the evaluation, or wait
+        void evaluate_threaded(ThreadData *pData) {
 
-                    // Set the completion flag - I'm done for now
-                    run.store(false, std::memory_order::memory_order_relaxed);
-                }
+            std::unique_lock<std::mutex> l(pData->m, std::defer_lock);
+            while (true)
+            {
+                l.lock();
+
+                // Wait until the queue isn't empty or stop is signaled
+                pData->cv.wait(l, [pData]() {
+                    return (pData->stop || !pData->jobs.empty());
+                });
+
+                // Stop was signaled, let's exit the thread
+                if (pData->stop) { return; }
+
+                // Pop one task from the queue...
+                job j = std::move(pData->jobs.front());
+                pData->jobs.pop();
+
+                l.unlock();
+
+                // Execute the task!
+                j(pData);
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         };
-
         void setup_threads(short Nthreads) {
-            std::size_t Nmax = m_outputs.size();
-            std::size_t Lchunk = Nmax / Nthreads;
-
-            // Set up the atomics for communicating with the threads
-            thread_run.resize(Nthreads);
-            for (std::size_t i = 0; i < Nthreads; ++i) {
-                thread_run[i] = false;
-            }
-            
-            // Set the quit flag to false (no mutex needed since only main thread active at this point)
-            quit = false;
-
-            for (long i = 0; i < Nthreads; ++i) {
-                std::size_t iStart = i*Lchunk;
-                // The last thread gets the remainder, shorter than the others if Nmax mod Nthreads != 0
-                std::size_t iEnd = ((i == Nthreads - 1) ? m_outputs.size() : (i + 1)*Lchunk);
-
-                threads.push_back(
-                    std::thread(&AbstractEvaluator::evaluate_threaded, this, iStart, iEnd, iStart, std::ref(thread_run[i]))
-                );
-                
-            }
-        }
-        void kill_threads() {
-            
-            // Signal the threads to stop
-            quit_mutex.lock();
-            quit = true;
-            quit_mutex.unlock();
-            
-            // Join the threads (wait for them to terminate)
-            for (auto &e : threads) {  e.join(); }
-
-            threads.clear();
-        }
-        
-        void evaluate_parallel(short Nthreads){
-            
-            if (threads.empty()) {
+            if (thread_data.empty()) {
                 auto startTime = std::chrono::system_clock::now();
-                    // Set up threads but put them in holding pattern
-                    setup_threads(Nthreads);
+
+                std::size_t Nmax = m_outputs.size();
+                std::size_t Lchunk = Nmax / Nthreads;
+
+                // Have to reconstruct because we cannot resize vector<ThreadData> because of non-copyconstructable members
+                thread_data = std::vector<ThreadData>(Nthreads);
+
+                for (long i = 0; i < Nthreads; ++i) {
+                    auto &td = thread_data[i];
+                    td.iStart = i*Lchunk;
+                    // The last thread gets the remainder, shorter than the others if Nmax mod Nthreads != 0
+                    td.iEnd = ((i == Nthreads - 1) ? m_outputs.size() : (i + 1)*Lchunk);
+                    td.eval = this;
+                    // Construct the thread that will actually do the evaluation
+                    td.t = std::thread(&AbstractEvaluator::evaluate_threaded, this, &td);
+                }
                 auto endTime = std::chrono::system_clock::now();
                 double thread_setup_elap = std::chrono::duration<double>(endTime - startTime).count();
                 //std::cout << "thread setup:" << thread_setup_elap << " s\n";
             }
+        };
+        void kill_threads() {
 
-            // Set the thread completion flag to fire the threads
-            // and allow them to evaluate in parallel
-            for (std::size_t i = 0; i < thread_run.size(); ++i) {
-                thread_run[i].store(true, std::memory_order::memory_order_relaxed);
+            // Tell all threads to stop
+            for (auto& td : thread_data)
+            {
+                std::unique_lock<std::mutex> l(td.m);
+                td.stop = true;
+                td.cv.notify_one();
+                
+            }
+            // Join all the threads
+            for (auto& td : thread_data) { td.t.join(); }
+        };
+        void evaluate_parallel(short Nthreads){
+            
+            // Set up threads but put them in holding pattern
+            //  no-op if threads are already initialized
+            setup_threads(Nthreads);
+
+            // Now fire!
+            for (auto &td : thread_data){
+
+                // The payload that will execute when the job is run
+                job j([](ThreadData *pData)
+                    {
+                        for (std::size_t j = pData->iStart; j < pData->iEnd; ++j) {
+                            pData->eval->m_outputs[j]->evaluate_one();
+                        }
+                    }
+                );
+                futures.push_back(j.get_future());
+
+                // Add the job to the queue
+                std::unique_lock<std::mutex> l(td.m);
+                td.jobs.push(std::move(j));
+
+                // Notify the thread that there is work do to...
+                td.cv.notify_one();
             }
             
-            // Wait for all the threads
-            bool done;
-            do{ 
-                done = true;
-                for (const auto &running : thread_run) {
-                    if (running) { done = false; break; }
-                }
-            } while (!done);
+            // Wait for all the tasks to be completed...
+            for (auto& f : futures) { f.wait(); }
+            futures.clear();
         };
 
         /** Construct the Jacobian matrix, where each entry in Jacobian matrix is given by

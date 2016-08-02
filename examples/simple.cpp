@@ -26,10 +26,12 @@ public:
         // Do the calculation
         double y = 0;
         const std::vector<double> &c = m_evaluator->get_const_coefficients();
+        for (int repeat = 0; repeat < 1; ++repeat){
         for (std::size_t i = 0; i < m_e.size(); ++i) {
             double term = pow(m_in->m_x, m_e[i]);
             y += c[i] * term;
             Jacobian_row[i] = term;
+        }
         }
         m_y_calc = y;
     }
@@ -110,7 +112,7 @@ void speedtest_fit_polynomial()
                 auto t = fit_polynomial (threading, N, Nthreads);
                 times.push_back(t);
             }
-            printf("%10d %10d %10.7f %10.7f %10.7f\n", Nthreads, static_cast<int>(N), times[1] / times[0], times[1], times[0]);
+            printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), times[1] / times[0], times[1], times[0]);
         }
     }
 }
@@ -125,7 +127,7 @@ void speedtest_fit_water_ancillary()
                 auto t = fit_waterpanc(threading, N, Nthreads);
                 times.push_back(t);
             }
-            printf("%10d %10d %10.7f %10.7f %10.7f\n", Nthreads, static_cast<int>(N), times[1] / times[0], times[1], times[0]);
+            printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), times[1] / times[0], times[1], times[0]);
         }
     }
 }
