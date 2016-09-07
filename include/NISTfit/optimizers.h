@@ -10,7 +10,7 @@ namespace NISTfit{
      * @param E The derived instance of AbstractEvaluator used to evaluate the terms in the sum-of-squares
      * @param c0 The initial values of the coefficients that are to be fit
      * @param threading True to use multi-threading, serial otherwise
-     * @param Nthreads -1 for std::thread::hardware_concurrency(), positive number otherwise
+     * @param Nthreads Number of threads to use; -1 for std::thread::hardware_concurrency(), positive number otherwise
      */
     std::vector<double> LevenbergMarquadt(std::shared_ptr<AbstractEvaluator> &E,
                            std::vector<double> &c0,
