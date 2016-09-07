@@ -59,6 +59,7 @@ std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator
                 nu *= 2;
             }
         }
+        if (counter > 1 && std::abs(F / F_previous - 1) < 1e-6) { break; }
         F_previous = F;
         if (F < DBL_EPSILON || std::abs(lambda) < DBL_EPSILON) { break; }
     }
