@@ -238,12 +238,15 @@ namespace NISTfit{
     /// The data structure for an output for the single y output variable
     class NumericOutput : public AbstractOutput{
         protected:
-            const std::shared_ptr<NumericInput> &m_in;
+            const std::shared_ptr<NumericInput> m_in;
             double m_y_calc;
             std::vector<double> Jacobian_row; // Partial derivative of calculated value with respect to each independent variable
             std::shared_ptr<AbstractNumericEvaluator> m_evaluator; // The evaluator connected with this output
         public:
-            NumericOutput(const std::shared_ptr<NumericInput> &in) : m_in(in) {};
+            /// Copy constructor
+			NumericOutput(const std::shared_ptr<NumericInput> &in) : m_in(in) {};
+			/// Move constructor
+			NumericOutput(const std::shared_ptr<NumericInput> &&in) : m_in(in) {};
             virtual double get_error(){ return m_y_calc - m_in->y(); };
             std::vector<double> & get_Jacobian_row() { return Jacobian_row; }
             void resize(std::size_t N){ Jacobian_row.resize(N); };
