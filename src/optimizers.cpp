@@ -1,6 +1,6 @@
 #include "NISTfit/abc.h"
 #include "NISTfit/optimizers.h"
-#include "Eigen/Eigen/Dense"
+#include "Eigen/Dense"
 #include <cfloat>
 
 std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator> &E,

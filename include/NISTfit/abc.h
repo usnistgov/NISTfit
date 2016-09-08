@@ -9,7 +9,7 @@
 #include <numeric>      // std::accumulate
 #include <queue>
 
-#include "Eigen/Eigen/Dense"
+#include "Eigen/Dense"
 
 namespace NISTfit{
     
