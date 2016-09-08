@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.0)
 project (NISTfit)
 
 # We heavily use C++11, C++11 support is required
@@ -16,11 +16,12 @@ if (${CMAKE_GENERATOR} MATCHES  "Unix Makefile")
 endif()
 
 if (NISTFIT_EXAMPLES)
+    # Add Eigen include here since we are going to use our version of Eigen
+    include_directories("${CMAKE_CURRENT_SOURCE_DIR}/externals/Eigen")
     add_executable(simple ${CMAKE_CURRENT_SOURCE_DIR}/examples/simple.cpp ${APP_SOURCES})
+    add_executable(fit_ancillary ${CMAKE_CURRENT_SOURCE_DIR}/examples/fit_ancillary.cpp ${APP_SOURCES})
 elseif (NISTFIT_STATIC_LIBRARY)
     add_library(NISTfit STATIC ${APP_SOURCES})
-    if (CMAKE_VERSION VERSION_GREATER 3.0)
-        # Add target include directories for easy linking with other applications
-        target_include_directories(NISTfit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
-    endif()
+    # Add target include directories for easy linking with other applications
+    target_include_directories(NISTfit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 endif()
