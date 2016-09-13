@@ -3,30 +3,30 @@
 #include "Eigen/Dense"
 #include <cfloat>
 
+
 std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator> &E,
-                       std::vector<double> &c0,
-                       bool threading,
-                       short Nthreads)
+                                               LevenbergMarquadtOptions &options)
 {
     double F_previous = 8888888;
     double lambda = 1;
     double nu = 2;
 
-    std::vector<double> c = c0;
+    std::vector<double> c =options.c0;
     
     Eigen::Map<Eigen::VectorXd> c_wrap(&c[0], c.size());
     
-    for (int counter = 0; counter < 40; ++counter) {
+    for (int counter = 0; counter < 100; ++counter) {
         
         E->set_coefficients(c);
         
         (
-         threading // Check if threading
-         ? E->evaluate_parallel( (Nthreads < 0) ? std::thread::hardware_concurrency() : Nthreads) // Using threading
+         options.threading // Check if threading
+         ? E->evaluate_parallel( (options.Nthreads < 0) ? std::thread::hardware_concurrency() : options.Nthreads) // Using threading
          : E->evaluate_serial(0, E->get_outputs_size(), 0) // Not using threading
         );
         const Eigen::MatrixXd &J = E->get_Jacobian_matrix();
         const Eigen::VectorXd &r = E->get_error_vector();
+        printf("r(min,max,mean): %g %g %g\n", r.minCoeff(), r.maxCoeff(), r.mean());
         
         double F = r.squaredNorm();
         if (counter == 0) {
@@ -59,8 +59,15 @@ std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator
                 nu *= 2;
             }
         }
-        if (counter > 1 && std::abs(F / F_previous - 1) < 1e-6) { break; }
+
+        // If the residual has stopped changing, stop, no sense to keep evaluating 
+        // with the same coefficients
+        if (counter > 1 && std::abs(F / F_previous - 1) < 1e-10) { break; }
+
+        // Copy the residual
         F_previous = F;
+
+        // Check whether to stop
         if (F < DBL_EPSILON || std::abs(lambda) < DBL_EPSILON) { break; }
     }
     return c;
