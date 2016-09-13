@@ -41,7 +41,7 @@ std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator
         Eigen::MatrixXd RHS = -J.transpose()*r;
         
         // Calculate the step
-        Eigen::VectorXd DELTAc = A.colPivHouseholderQr().solve(RHS);
+        Eigen::VectorXd DELTAc = options.omega*A.colPivHouseholderQr().solve(RHS);
         // Take the step
         c_wrap += DELTAc;
         
