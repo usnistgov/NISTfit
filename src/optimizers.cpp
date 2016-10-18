@@ -26,7 +26,7 @@ std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator
         );
         const Eigen::MatrixXd &J = E->get_Jacobian_matrix();
         const Eigen::VectorXd &r = E->get_error_vector();
-        printf("r(min,max,mean): %g %g %g\n", r.minCoeff(), r.maxCoeff(), r.mean());
+        //printf("r(min,max,mean): %g %g %g\n", r.minCoeff(), r.maxCoeff(), r.mean());
         
         double F = r.squaredNorm();
         if (counter == 0) {
@@ -62,13 +62,17 @@ std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator
 
         // If the residual has stopped changing, stop, no sense to keep evaluating 
         // with the same coefficients
-        if (counter > 1 && std::abs(F / F_previous - 1) < 1e-10) { break; }
+        if (counter > 1 && std::abs(F / F_previous - 1) < 1e-10) { 
+            break; 
+        }
 
         // Copy the residual
         F_previous = F;
 
         // Check whether to stop
-        if (F < DBL_EPSILON || std::abs(lambda) < DBL_EPSILON) { break; }
+        if (F < DBL_EPSILON || std::abs(lambda) < DBL_EPSILON) { 
+            break; 
+        }
     }
     return c;
 }
