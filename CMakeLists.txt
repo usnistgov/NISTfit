@@ -19,7 +19,6 @@ if (NISTFIT_EXAMPLES)
     # Add Eigen include here since we are going to use our version of Eigen
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/externals/Eigen")
     add_executable(simple ${CMAKE_CURRENT_SOURCE_DIR}/examples/simple.cpp ${APP_SOURCES})
-    add_executable(fit_ancillary ${CMAKE_CURRENT_SOURCE_DIR}/examples/fit_ancillary.cpp ${APP_SOURCES})
 elseif (NISTFIT_STATIC_LIBRARY)
     add_library(NISTfit STATIC ${APP_SOURCES})
     # Add target include directories for easy linking with other applications

@@ -80,7 +80,9 @@ double fit_waterpanc(bool threading, std::size_t N, short Nthreads) {
     std::vector<double> c = { 1,1,1,1,1,1 };
     std::vector<std::shared_ptr<AbstractOutput> > outs;
     auto startTime = std::chrono::system_clock::now();
-        auto cc = LevenbergMarquadt(eval, c, threading, Nthreads);
+    auto opts = LevenbergMarquadtOptions();
+        opts.c0 = c; opts.threading = threading; opts.Nthreads = Nthreads;
+        auto cc = LevenbergMarquadt(eval, opts);
     return std::chrono::duration<double>(std::chrono::system_clock::now() - startTime).count();
 }
 
@@ -96,7 +98,9 @@ double fit_polynomial(bool threading, std::size_t Nmax, short Nthreads)
     
     std::vector<double> c = { -10, -2, 2.5 };
     auto startTime = std::chrono::system_clock::now();
-        auto cc = LevenbergMarquadt(eval, c, threading, Nthreads);
+        auto opts = LevenbergMarquadtOptions();
+        opts.c0 = c; opts.threading = threading; opts.Nthreads = Nthreads;
+        auto cc = LevenbergMarquadt(eval, opts);
     auto endTime = std::chrono::system_clock::now();
     return std::chrono::duration<double>(endTime - startTime).count();
 }
