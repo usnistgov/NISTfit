@@ -69,10 +69,10 @@ namespace NISTfit{
 
         ~AbstractEvaluator() {
             if (!thread_data.empty()) {
-                auto startTime = std::chrono::system_clock::now();
+                // auto startTime = std::chrono::system_clock::now();
                 kill_threads();
-                auto endTime = std::chrono::system_clock::now();
-                double thread_kill_elap = std::chrono::duration<double>(endTime - startTime).count();
+                // auto endTime = std::chrono::system_clock::now();
+                // double thread_kill_elap = std::chrono::duration<double>(endTime - startTime).count();
                 //std::cout << "thread teardown:" << thread_kill_elap << " s\n";
             }
         }
@@ -120,7 +120,7 @@ namespace NISTfit{
         };
         void setup_threads(short Nthreads) {
             if (thread_data.empty()) {
-                auto startTime = std::chrono::system_clock::now();
+                // auto startTime = std::chrono::system_clock::now();
 
                 std::size_t Nmax = m_outputs.size();
                 std::size_t Lchunk = Nmax / Nthreads;
@@ -137,8 +137,8 @@ namespace NISTfit{
                     // Construct the thread that will actually do the evaluation
                     td.t = std::thread(&AbstractEvaluator::evaluate_threaded, this, &td);
                 }
-                auto endTime = std::chrono::system_clock::now();
-                double thread_setup_elap = std::chrono::duration<double>(endTime - startTime).count();
+                // auto endTime = std::chrono::system_clock::now();
+                // double thread_setup_elap = std::chrono::duration<double>(endTime - startTime).count();
                 //std::cout << "thread setup:" << thread_setup_elap << " s\n";
             }
         };
