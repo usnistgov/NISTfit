@@ -15,6 +15,8 @@ namespace NISTfit{
                          const std::shared_ptr<NumericInput> &in,
                          AbstractNumericEvaluator *peval
                          ) : NumericOutput(in), m_order(order), m_evaluator(peval) {};
+        /// The exception handler must be implemented; here we just set the residue to a very large number
+        void exception_handler(){ m_y_calc = 10000; };
         void evaluate_one(){
             // Get the input
             double lhs = 0;

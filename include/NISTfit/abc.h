@@ -27,6 +27,10 @@ namespace NISTfit{
         virtual void evaluate_one() = 0;
         /// Return the linked input state
         virtual std::shared_ptr<AbstractInput> get_input() = 0;
+        /// A pure-virtual function that is used to handle ANY exception that is caught in the
+        /// evaluate_one function.  You might want to consider re-throwing the exception in the function
+        /// and then setting an error flag/message, etc.
+        virtual void exception_handler() = 0;
 
     };
 
@@ -86,7 +90,12 @@ namespace NISTfit{
             for (int rep = 0; rep < Nrepeat; ++rep) {
                 std::size_t j = iOutputStart;
                 for (std::size_t i = iInputStart; i < iInputStop; ++i) {
-                    m_outputs[j]->evaluate_one();
+                    try{
+                        m_outputs[j]->evaluate_one();
+                    }
+                    catch(...){
+                        m_outputs[j]->exception_handler();
+                    }
                     j++;
                 }
             }
@@ -168,7 +177,12 @@ namespace NISTfit{
                 job j([](ThreadData *pData)
                     {
                         for (std::size_t j = pData->iStart; j < pData->iEnd; ++j) {
-                            pData->eval->m_outputs[j]->evaluate_one();
+                            try{
+                                pData->eval->m_outputs[j]->evaluate_one();
+                            }
+                            catch(...){
+                                pData->eval->m_outputs[j]->exception_handler();
+                            }
                         }
                     }
                 );
