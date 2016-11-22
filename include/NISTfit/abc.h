@@ -69,6 +69,7 @@ namespace NISTfit{
     public:
         virtual void set_coefficients(const std::vector<double> &) = 0;
         virtual const std::vector<double> & get_const_coefficients() = 0;
+        /// Get the size of the outputs
         std::size_t get_outputs_size() { return m_outputs.size(); };
 
         ~AbstractEvaluator() {
@@ -81,9 +82,11 @@ namespace NISTfit{
             }
         }
 
-        /** Evaluate the residual function in serial operation for the input vector indices in the range [iInputStart, iInputStop)
+        /** 
+         * @brief Evaluate the residual function in serial operation for the input vector indices in the range [iInputStart, iInputStop)
          * @param iInputStart The starting index (included in the output)
          * @param iInputStop The stopping index (NOT included in the output) (a la Python)
+         * @param iOutputStart The starting index for where the outputs should be placed (probably equal to iInputStart)
          */
         void evaluate_serial(std::size_t iInputStart, std::size_t iInputStop, std::size_t iOutputStart) const {
             int Nrepeat = 1;
@@ -101,7 +104,9 @@ namespace NISTfit{
             }
         };
 
-        // In an infinite loop, either run the evaluation, or wait
+        /**
+         * @brief In an infinite loop, either run the evaluation, or wait
+         */
         void evaluate_threaded(ThreadData *pData) {
 
             std::unique_lock<std::mutex> l(pData->m, std::defer_lock);
@@ -127,6 +132,10 @@ namespace NISTfit{
                 j(pData);
             }
         };
+        /**
+         * @brief Setup the threads that will be used to do the evaluations
+         * 
+         */
         void setup_threads(short Nthreads) {
             if (thread_data.empty()) {
                 // auto startTime = std::chrono::system_clock::now();
@@ -151,6 +160,11 @@ namespace NISTfit{
                 //std::cout << "thread setup:" << thread_setup_elap << " s\n";
             }
         };
+        /**
+         * @brief Kill the threads that have been spun up to do the evaluations
+         * 
+         * This function is called when AbstractEvaluator is destroyed
+         */
         void kill_threads() {
 
             // Tell all threads to stop
@@ -201,8 +215,13 @@ namespace NISTfit{
             futures.clear();
         };
 
-        /** Construct the Jacobian matrix, where each entry in Jacobian matrix is given by
-         * \f[ J_{ij} = \frac{\partial (y_{\rm fit} - y_{\rm given})_i}{\partial c_i} \f]
+        /** 
+         * @brief Construct the Jacobian matrix \f$\mathbf{J}\f$
+         *
+         * Each entry in the Jacobian matrix is given by
+         * \f[ J_{ij} = \frac{\partial r_i}{\partial c_j} \f]
+         * where \f$r_i\f$ is the \f$i\f$-th residue and \f$c_j\f$ is the \f$j\f$-th coefficient
+         * 
          * It is constructed by taking the rows of the Jacobian matrix stored in instances of AbstractOutput
          */
         const Eigen::MatrixXd &get_Jacobian_matrix() {
@@ -218,8 +237,11 @@ namespace NISTfit{
             return J;
         };
 
-        /** /brief Construct the residual vector of residuals for each data point
+        /** @brief Construct the residual vector of residuals for each data point
          * \f[ r_i = (y_{\rm fit} - y_{\rm given})_i\f]
+         *
+         * Internally, the AbstractOutput::get_error() function is called on each AbstractOutput managed by this evaluator.  One 
+         * of AbstractOutput::evaluate_serial() or AbstractOutput::evaluate_threaded() should have already been called before calling this function
          */
         const Eigen::VectorXd &get_error_vector() {
             r.resize(m_outputs.size());

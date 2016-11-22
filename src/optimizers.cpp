@@ -4,8 +4,8 @@
 #include <cfloat>
 
 
-std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator> &E,
-                                               LevenbergMarquadtOptions &options)
+std::vector<double> NISTfit::LevenbergMarquardt(std::shared_ptr<AbstractEvaluator> &E,
+                                                LevenbergMarquardtOptions &options)
 {
     double F_previous = 8888888;
     double lambda = 1;
@@ -35,7 +35,7 @@ std::vector<double> NISTfit::LevenbergMarquadt(std::shared_ptr<AbstractEvaluator
             lambda = maxDiag*tau0;
         }
         
-        // Levenberg-Marquadt with A*DELTAc = RHS
+        // Levenberg-Marquardt with A*DELTAc = RHS
         Eigen::MatrixXd t2 = lambda*(J.transpose()*J).diagonal().asDiagonal();
         Eigen::MatrixXd A = J.transpose()*J + t2;
         Eigen::MatrixXd RHS = -J.transpose()*r;
