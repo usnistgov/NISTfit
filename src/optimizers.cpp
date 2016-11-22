@@ -28,7 +28,7 @@ std::vector<double> NISTfit::LevenbergMarquardt(std::shared_ptr<AbstractEvaluato
         const Eigen::VectorXd &r = E->get_error_vector();
         //printf("r(min,max,mean): %g %g %g\n", r.minCoeff(), r.maxCoeff(), r.mean());
         
-        double F = r.squaredNorm();
+        double F = r.squaredNorm(); // This is actually the sum of squares of the entries in the error vector
         if (counter == 0) {
             double tau0 = 0.00001;
             double maxDiag = (J.transpose()*J).diagonal().maxCoeff();
