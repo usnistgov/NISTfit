@@ -15,17 +15,17 @@ using namespace NISTfit;
 class SaturationPressureOutput : public NumericOutput {
 protected:
     const std::vector<double> m_e; // Exponents for terms in saturation pressure equation
-    AbstractNumericEvaluator *m_evaluator; // The evaluator connected with this output
 public:
     SaturationPressureOutput(const std::vector<double> &e,
-                             const std::shared_ptr<NumericInput> &in,
-                             AbstractNumericEvaluator *eval)
-        : NumericOutput(in), m_e(e), m_evaluator(eval) {};
-    
+                             const std::shared_ptr<NumericInput> &in)
+        : NumericOutput(in), m_e(e) {};
+    /// In the highly unlikely case of an exception in this class (implementation of this method is required), 
+    /// set the calculated value to something very large
+    void exception_handler(){ m_y_calc = 100000; }
     void evaluate_one(){
         // Do the calculation
         double y = 0;
-        const std::vector<double> &c = m_evaluator->get_const_coefficients();
+        const std::vector<double> &c = get_AbstractEvaluator()->get_const_coefficients();
         for (int repeat = 0; repeat < 1; ++repeat){
         for (std::size_t i = 0; i < m_e.size(); ++i) {
             double term = pow(m_in->m_x, m_e[i]);
@@ -38,15 +38,15 @@ public:
 };
 
 /// The class for the evaluation of a single output value for a single input value
-class SaturationPressureEvaluator : public AbstractNumericEvaluator {
+class SaturationPressureEvaluator : public NumericEvaluator {
 public:
     SaturationPressureEvaluator(const std::vector<double> &e,
                                 const std::vector<std::shared_ptr<NumericInput> > &inputs)
     {
         for (auto &in : inputs) {
-            std::shared_ptr<NumericOutput> out(new SaturationPressureOutput(e, in, this));
+            std::shared_ptr<NumericOutput> out(new SaturationPressureOutput(e, in));
             out->resize(e.size()); // Set the size of the Jacobian row
-            m_outputs.push_back(out);
+            add_output(out);
         }
     };
 };
@@ -80,9 +80,9 @@ double fit_waterpanc(bool threading, std::size_t N, short Nthreads) {
     std::vector<double> c = { 1,1,1,1,1,1 };
     std::vector<std::shared_ptr<AbstractOutput> > outs;
     auto startTime = std::chrono::system_clock::now();
-    auto opts = LevenbergMarquadtOptions();
+    auto opts = LevenbergMarquardtOptions();
         opts.c0 = c; opts.threading = threading; opts.Nthreads = Nthreads;
-        auto cc = LevenbergMarquadt(eval, opts);
+        auto cc = LevenbergMarquardt(eval, opts);
     return std::chrono::duration<double>(std::chrono::system_clock::now() - startTime).count();
 }
 
@@ -98,9 +98,9 @@ double fit_polynomial(bool threading, std::size_t Nmax, short Nthreads)
     
     std::vector<double> c = { -10, -2, 2.5 };
     auto startTime = std::chrono::system_clock::now();
-        auto opts = LevenbergMarquadtOptions();
+        auto opts = LevenbergMarquardtOptions();
         opts.c0 = c; opts.threading = threading; opts.Nthreads = Nthreads;
-        auto cc = LevenbergMarquadt(eval, opts);
+        auto cc = LevenbergMarquardt(eval, opts);
     auto endTime = std::chrono::system_clock::now();
     return std::chrono::duration<double>(endTime - startTime).count();
 }

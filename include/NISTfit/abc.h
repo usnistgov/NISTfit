@@ -12,6 +12,10 @@
 #include "Eigen/Dense"
 
 namespace NISTfit{
+
+    // Forward definitions
+    struct ThreadData;
+    class AbstractEvaluator;
     
     /// The abstract base class for the inputs
     class AbstractInput {
@@ -19,6 +23,11 @@ namespace NISTfit{
 
     /// The abstract base class for the outputs
     class AbstractOutput{
+    private:
+        /// The AbstractEvaluator that this output is linked with.  This pointer *MUST* be set 
+        /// when the AbstractOutput (or derived class thereof) is added to the AbstractEvaluator.
+        /// The AbstractEvaluator::add_output() function takes case of this automatically.
+        AbstractEvaluator *m_evaluator;
     public:
         virtual double get_error() = 0;
         virtual std::vector<double> &get_Jacobian_row() { throw std::exception(); };
@@ -31,12 +40,11 @@ namespace NISTfit{
         /// evaluate_one function.  You might want to consider re-throwing the exception in the function
         /// and then setting an error flag/message, etc.
         virtual void exception_handler() = 0;
-
+        /// Get the pointer to the AbstractEvaluator linked with this output
+        virtual AbstractEvaluator * get_AbstractEvaluator(){ return m_evaluator; }
+        /// Set the pointer to the AbstractEvaluator linked with this output
+        virtual void set_AbstractEvaluator(AbstractEvaluator *evaluator) { m_evaluator = evaluator; }
     };
-
-    // Forward definitions
-    struct ThreadData;
-    class AbstractEvaluator;
 
     // Convenience type definition
     using job = std::packaged_task<void(ThreadData *)>;
@@ -57,9 +65,9 @@ namespace NISTfit{
     /// The abstract base class for the evaluator
     class AbstractEvaluator
     {
-    protected:
-        // Collect the outputs
+    private:
         std::vector<std::shared_ptr<AbstractOutput> > m_outputs;
+    protected:
         Eigen::MatrixXd J;
         Eigen::VectorXd r;
         std::vector<ThreadData> thread_data; ///< The thread data for the threads
@@ -71,6 +79,10 @@ namespace NISTfit{
         virtual const std::vector<double> & get_const_coefficients() = 0;
         /// Get the size of the outputs
         std::size_t get_outputs_size() { return m_outputs.size(); };
+        void add_output(std::shared_ptr<AbstractOutput> out) {
+            m_outputs.push_back(out);
+            out->set_AbstractEvaluator(this);
+        }
 
         ~AbstractEvaluator() {
             if (!thread_data.empty()) {
@@ -263,7 +275,7 @@ namespace NISTfit{
     };
     
     /// The class for the evaluation of a single output value for a single input value
-    class AbstractNumericEvaluator : public AbstractEvaluator {
+    class NumericEvaluator : public AbstractEvaluator {
     protected:
         std::vector<double> m_c;
     public:
@@ -277,7 +289,6 @@ namespace NISTfit{
             const std::shared_ptr<NumericInput> m_in;
             double m_y_calc;
             std::vector<double> Jacobian_row; // Partial derivative of calculated value with respect to each independent variable
-            std::shared_ptr<AbstractNumericEvaluator> m_evaluator; // The evaluator connected with this output
         public:
             /// Copy constructor
 			NumericOutput(const std::shared_ptr<NumericInput> &in) : m_in(in) {};
