@@ -81,7 +81,7 @@ namespace NISTfit{
         std::size_t get_outputs_size() { return m_outputs.size(); };
         void add_output(std::shared_ptr<AbstractOutput> out) {
             m_outputs.push_back(out);
-            out->set_AbstractEvaluator(this);
+            m_outputs[m_outputs.size()-1]->set_AbstractEvaluator(this);
         }
 
         ~AbstractEvaluator() {
