@@ -19,8 +19,9 @@ namespace NISTfit{
             double lhs = 0;
             // Do the calculation
             const std::vector<double> &c = get_AbstractEvaluator()->get_const_coefficients();
+            if (c.size() != m_order +1){ throw std::exception("lengths do not agree"); }
             for (std::size_t i = 0; i < m_order+1; ++i) {
-                double term = pow(m_in->m_x, static_cast<int>(i));
+                double term = pow(m_in->x(), static_cast<int>(i));
                 lhs += c[i]*term;
                 Jacobian_row[i] = term;
             }
@@ -40,7 +41,6 @@ namespace NISTfit{
             }
         };
     };
-    
     
 }; /* namespace NISTfit */
 

@@ -19,8 +19,22 @@ if (NISTFIT_EXAMPLES)
     # Add Eigen include here since we are going to use our version of Eigen
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/externals/Eigen")
     add_executable(simple ${CMAKE_CURRENT_SOURCE_DIR}/examples/simple.cpp ${APP_SOURCES})
-elseif (NISTFIT_STATIC_LIBRARY)
+elseif (NISTFIT_STATIC_LIBRARY OR NISTFIT_PYBIND11)
     add_library(NISTfit STATIC ${APP_SOURCES})
     # Add target include directories for easy linking with other applications
     target_include_directories(NISTfit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+endif()
+
+if (NISTFIT_PYBIND11)
+
+    # ----------------------------
+    # Build pybind11 python module
+    # ----------------------------
+    
+    # Add Eigen include here since we are going to use our version of Eigen
+    include_directories("${CMAKE_CURRENT_SOURCE_DIR}/externals/Eigen")
+    add_subdirectory("${CMAKE_SOURCE_DIR}/externals/pybind11")
+    add_definitions(-DPYBIND11)
+    pybind11_add_module(PolyFitter "${CMAKE_SOURCE_DIR}/src/pybind11_interface.cxx")
+    target_link_libraries (PolyFitter PUBLIC NISTfit)
 endif()
