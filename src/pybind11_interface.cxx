@@ -27,7 +27,6 @@ void init_fitter(py::module &m){
 
     py::class_<PolynomialEvaluator, AbstractEvaluator, std::shared_ptr<PolynomialEvaluator> >(m, "PolynomialEvaluator")
         .def(py::init<std::size_t, const std::vector<std::shared_ptr<NumericInput> > & >())
-
         ;
 
     py::class_<LevenbergMarquardtOptions>(m, "LevenbergMarquardtOptions")
