@@ -19,7 +19,7 @@ if (NISTFIT_EXAMPLES)
     # Add Eigen include here since we are going to use our version of Eigen
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/externals/Eigen")
     add_executable(simple ${CMAKE_CURRENT_SOURCE_DIR}/examples/simple.cpp ${APP_SOURCES})
-    if (DEFINED NISTFIT_NTHREAD_MAX)
+    if (NISTFIT_NTHREAD_MAX)
         add_definitions(-DNISTFIT_NTHREAD_MAX=${NISTFIT_NTHREAD_MAX})
     endif()
 elseif (NISTFIT_STATIC_LIBRARY OR NISTFIT_PYBIND11)
