@@ -12,6 +12,82 @@
 
 using namespace NISTfit;
 
+/*
+ * \brief The factorial function
+ * 
+ * Not done efficiently, could certainly be improved, but the point is we want it to be slow!
+ */
+double factorial(int N){
+    if (N == 0){ return 1; } // An identity
+    double o = N; // output; as double to avoid overflow
+    for (int i = N - 1; i > 0; --i) {
+        o *= i;
+    }
+    return o;
+}
+/* 
+ * \brief The exponential function exp(x) expressed as series expansion
+ *
+ * This is an intentionally slow implementation of the exponential function, in 
+ * order to increase the amount of work per evaluation
+ */
+double exp_expansion(double x, int N) {
+    double y = 0;
+    for (int m=0; m < N; ++m){
+        y += pow(x, m)/factorial(m);
+    }
+    return y;
+}
+double sin_expansion(double x, int N) {
+    double y = 0;
+    for (int m = 0; m < N; ++m) {
+        y += pow(-1, m)*pow(x, 2*m+1)/factorial(2*m+1);
+    }
+    return y;
+}
+double cos_expansion(double x, int N) {
+    double y = 0;
+    for (int m = 0; m < N; ++m) {
+        y += pow(-1, m)*pow(x, 2*m)/factorial(2*m);
+    }
+    return y;
+}
+
+class DecayingExponentialOutput : public NumericOutput {
+protected:
+    int N; ///< Order of Taylor series expansion
+public:
+    DecayingExponentialOutput(int N,  
+                              const std::shared_ptr<NumericInput> &in)
+        : NumericOutput(in), N(N) {};
+    /// In the highly unlikely case of an exception in this class (implementation of this method is required), 
+    /// set the calculated value to something very large
+    void exception_handler() { m_y_calc = 100000; }
+    void evaluate_one() {
+        // Do the calculation
+        const std::vector<double> &c = get_AbstractEvaluator()->get_const_coefficients();
+        const double x = m_in->x(), e = exp_expansion(-c[0] * x, N), s1 = sin_expansion(c[1] * x, N), c2 = cos_expansion(c[2] * x, N);
+        double y = e*s1*c2;
+        Jacobian_row[0] = -x*y;
+        Jacobian_row[1] = x*e*cos_expansion(c[1]*x,N)*c2;
+        Jacobian_row[2] = -x*e*s1*sin_expansion(c[2]*x,N);
+        m_y_calc = y;
+    }
+};
+
+/// The class for the evaluation of a single output value for a single input value
+class DecayingExponentialEvaluator : public NumericEvaluator {
+public:
+    DecayingExponentialEvaluator(int N, const std::vector<std::shared_ptr<NumericInput> > &inputs)
+    {
+        for (auto &in : inputs) {
+            std::shared_ptr<NumericOutput> out(new DecayingExponentialOutput(N, in));
+            out->resize(3); // Set the size of the Jacobian row
+            add_output(out);
+        }
+    };
+}; 
+
 class SaturationPressureOutput : public NumericOutput {
 protected:
     const std::vector<double> m_e; // Exponents for terms in saturation pressure equation
@@ -28,7 +104,7 @@ public:
         const std::vector<double> &c = get_AbstractEvaluator()->get_const_coefficients();
         for (int repeat = 0; repeat < 1; ++repeat){
         for (std::size_t i = 0; i < m_e.size(); ++i) {
-            double term = pow(m_in->m_x, m_e[i]);
+            double term = pow(m_in->x(), m_e[i]);
             y += c[i] * term;
             Jacobian_row[i] = term;
         }
@@ -105,6 +181,26 @@ double fit_polynomial(bool threading, std::size_t Nmax, short Nthreads)
     return std::chrono::duration<double>(endTime - startTime).count();
 }
 
+double fit_decaying_exponential(bool threading, std::size_t Nmax, short Nthreads, long N)
+{
+    double a = 0.2, b = 3, c = 1.3;
+    std::vector<std::shared_ptr<NumericInput> > inputs;
+    for (double i = 0; i < Nmax; ++i) {
+        double x = i / ((double)Nmax);
+        double y = exp(-a*x)*sin(b*x)*cos(c*x);
+        inputs.push_back(std::shared_ptr<NumericInput>(new NumericInput(x, y)));
+    }
+    std::shared_ptr<AbstractEvaluator> eval(new DecayingExponentialEvaluator(N, inputs));
+
+    std::vector<double> c0 = { 0.05, 1, 1.5 };
+    auto startTime = std::chrono::system_clock::now();
+    auto opts = LevenbergMarquardtOptions();
+    opts.c0 = c0; opts.threading = threading; opts.Nthreads = Nthreads;
+    auto cc = LevenbergMarquardt(eval, opts);
+    auto endTime = std::chrono::system_clock::now();
+    return std::chrono::duration<double>(endTime - startTime).count();
+}
+
 
 void speedtest_fit_polynomial()
 {
@@ -136,7 +232,23 @@ void speedtest_fit_water_ancillary()
     }
 }
 
+void speedtest_decaying_exponential()
+{
+    std::cout << "XXXXXXXXXX DECAYING EXPONENTIAL with 100-term expansions XXXXXXXXXX" << std::endl;
+    for (short Nthreads = 1; Nthreads <= static_cast<short>(std::thread::hardware_concurrency()); ++Nthreads) {
+        for (long N = 100; N < 200; N *= 10) {
+            std::vector<double> times;
+            for (auto &threading : { true, false }) {
+                auto t = fit_decaying_exponential(threading, 10000, Nthreads, N);
+                times.push_back(t);
+            }
+            printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), times[1] / times[0], times[1], times[0]);
+        }
+    }
+}
+
 int main(){
+    speedtest_decaying_exponential();
     speedtest_fit_polynomial();
     speedtest_fit_water_ancillary();
 }

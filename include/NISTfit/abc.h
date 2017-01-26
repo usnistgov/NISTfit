@@ -269,12 +269,10 @@ namespace NISTfit{
 
     /// The data inputs
     class NumericInput : public AbstractInput{
-        private:
+        protected:
             double m_x, m_y;
         public:
-            NumericInput(double x, double y) : m_x(x), m_y(y) {
-                int rr =0;
-            };
+            NumericInput(double x, double y) : m_x(x), m_y(y) {};
             const double x() const { return m_x; };
             const double y() const { return m_y; };
     };
