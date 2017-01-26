@@ -2,6 +2,8 @@
 
 A heavily abstracted C++-based kernel for fitting correlations
 
+[![Build Status](https://travis-ci.org/usnistgov/NISTfit.svg?branch=master)](https://travis-ci.org/usnistgov/NISTfit)
+
 ## Why NISTfit?
 
   - In our work, we develop correlations between input properties and output properties.  These correlations are sometimes complex multiparameter equations of state, and other times, simple polynomials.  In any case, it was desired to have a generalized framework for carrying out these types of procedures in a generalized, fast(!), and flexible framework.  Being open-source and cross-platform, C++ is an ideal language for all three goals.
