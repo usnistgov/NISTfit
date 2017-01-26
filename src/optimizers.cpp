@@ -3,7 +3,6 @@
 #include "Eigen/Dense"
 #include <cfloat>
 
-
 std::vector<double> NISTfit::LevenbergMarquardt(std::shared_ptr<AbstractEvaluator> &E,
                                                 LevenbergMarquardtOptions &options)
 {
@@ -30,7 +29,10 @@ std::vector<double> NISTfit::LevenbergMarquardt(std::shared_ptr<AbstractEvaluato
         
         double F = r.squaredNorm(); // This is actually the sum of squares of the entries in the error vector
         if (counter == 0) {
-            double tau0 = 0.00001;
+            // Madsen recommends setting tau to 1e-6 if the initial guess 
+            // is believed to be a good estimate of the final solution, or 
+            // larger values like 1e-3 or 1e0 if the guess value is less certain
+            double tau0 = 1;
             double maxDiag = (J.transpose()*J).diagonal().maxCoeff();
             lambda = maxDiag*tau0;
         }
@@ -50,8 +52,9 @@ std::vector<double> NISTfit::LevenbergMarquardt(std::shared_ptr<AbstractEvaluato
             double DELTAL = 0.5*DELTAc.transpose()*(lambda*DELTAc - J.transpose()*r);
             double rho = (F_previous - F) / DELTAL;
             
+            // Madsen Eq. 2.21
             if (rho > 0) {
-                lambda *= std::max(1.0 / 3.0, 1 - pow(2 * rho - 1, 3));
+                lambda *= std::max(1.0/3.0, 1 - pow(2 * rho - 1, 3));
                 nu = 2;
             }
             else {
