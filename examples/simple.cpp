@@ -204,8 +204,9 @@ double fit_decaying_exponential(bool threading, std::size_t Nmax, short Nthreads
 
 void speedtest_fit_polynomial()
 {
+    short Nthread_max = std::min(static_cast<short>(10), static_cast<short>(std::thread::hardware_concurrency()));
     std::cout << "XXXXXXXXXX POLYNOMIAL XXXXXXXXXX" << std::endl;
-    for (short Nthreads = 1; Nthreads <= static_cast<short>(std::thread::hardware_concurrency()); ++Nthreads) {
+    for (short Nthreads = 1; Nthreads <= Nthread_max; ++Nthreads) {
         for (std::size_t N = 100; N < 10000000; N *= 10) {
             std::vector<double> times;
             for (auto &threading : { true, false }) {
@@ -219,8 +220,9 @@ void speedtest_fit_polynomial()
 
 void speedtest_fit_water_ancillary()
 {
+    short Nthread_max = std::min(static_cast<short>(10), static_cast<short>(std::thread::hardware_concurrency()));
     std::cout << "XXXXXXXXXX WATER ANCILLARY XXXXXXXXXX" << std::endl;
-    for (short Nthreads = 1; Nthreads <= static_cast<short>(std::thread::hardware_concurrency()); ++Nthreads) {
+    for (short Nthreads = 1; Nthreads <= Nthread_max; ++Nthreads) {
         for (std::size_t N = 100; N < 10000000; N *= 10) {
             std::vector<double> times;
             for (auto &threading : { true, false }) {
@@ -234,9 +236,10 @@ void speedtest_fit_water_ancillary()
 
 void speedtest_decaying_exponential()
 {
-    std::cout << "XXXXXXXXXX DECAYING EXPONENTIAL with 100-term expansions XXXXXXXXXX" << std::endl;
-    for (short Nthreads = 1; Nthreads <= static_cast<short>(std::thread::hardware_concurrency()); ++Nthreads) {
-        for (long N = 100; N < 200; N *= 10) {
+    short Nthread_max = std::min(static_cast<short>(10), static_cast<short>(std::thread::hardware_concurrency()));
+    std::cout << "XXXXXXXXXX DECAYING EXPONENTIAL with 50-term expansions XXXXXXXXXX" << std::endl;
+    for (short Nthreads = 1; Nthreads <= Nthread_max; ++Nthreads) {
+        for (long N = 50; N < 100; N *= 10) {
             std::vector<double> times;
             for (auto &threading : { true, false }) {
                 auto t = fit_decaying_exponential(threading, 10000, Nthreads, N);
@@ -248,6 +251,7 @@ void speedtest_decaying_exponential()
 }
 
 int main(){
+    std::cout << "hardware_concurrency:" << std::thread::hardware_concurrency() << std::endl;
     speedtest_decaying_exponential();
     speedtest_fit_polynomial();
     speedtest_fit_water_ancillary();
