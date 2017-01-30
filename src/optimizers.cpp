@@ -13,21 +13,25 @@ std::vector<double> NISTfit::LevenbergMarquardt(std::shared_ptr<AbstractEvaluato
     std::vector<double> c =options.c0;
     
     Eigen::Map<Eigen::VectorXd> c_wrap(&c[0], c.size());
+
+    auto Nthreads = (options.Nthreads < 0) ? std::thread::hardware_concurrency() : options.Nthreads;
     
     for (int counter = 0; counter < 100; ++counter) {
         
         E->set_coefficients(c);
         
-        (
-         options.threading // Check if threading
-         ? E->evaluate_parallel( (options.Nthreads < 0) ? std::thread::hardware_concurrency() : options.Nthreads) // Using threading
-         : E->evaluate_serial(0, E->get_outputs_size(), 0) // Not using threading
-        );
+        if (options.threading){ // Check if threading
+            E->evaluate_parallel(Nthreads); // Using threading
+        }
+        else{
+            E->evaluate_serial(0, E->get_outputs_size(), 0); // Not using threading
+        };
         const Eigen::MatrixXd &J = E->get_Jacobian_matrix();
         const Eigen::VectorXd &r = E->get_error_vector();
         //printf("r(min,max,mean): %g %g %g\n", r.minCoeff(), r.maxCoeff(), r.mean());
         
-        double F = r.squaredNorm(); // This is actually the sum of squares of the entries in the error vector
+        // This is actually the sum of squares of the entries in the error vector
+        double F = r.squaredNorm(); 
         if (counter == 0) {
             // Madsen recommends setting tau to 1e-6 if the initial guess 
             // is believed to be a good estimate of the final solution, or 

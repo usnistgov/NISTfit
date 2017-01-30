@@ -59,7 +59,7 @@ protected:
 public:
     DecayingExponentialOutput(int N,  
                               const std::shared_ptr<NumericInput> &in)
-        : NumericOutput(in), N(N) {};
+        : NumericOutput(in), N(N) { resize(3); };
     /// In the highly unlikely case of an exception in this class (implementation of this method is required), 
     /// set the calculated value to something very large
     void exception_handler() { m_y_calc = 100000; }
@@ -82,7 +82,6 @@ public:
     {
         for (auto &in : inputs) {
             std::shared_ptr<NumericOutput> out(new DecayingExponentialOutput(N, in));
-            out->resize(3); // Set the size of the Jacobian row
             add_output(out);
         }
     };
