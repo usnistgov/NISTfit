@@ -1,2 +1,4 @@
 /_build
 /build
+/examples/*.TMP
+/include/NISTfit/*.TMP
