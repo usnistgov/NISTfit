@@ -40,6 +40,7 @@ void init_fitter(py::module &m){
         .def_readwrite("threading", &LevenbergMarquardtOptions::threading)
         .def_readwrite("Nthreads", &LevenbergMarquardtOptions::Nthreads)
         .def_readwrite("omega", &LevenbergMarquardtOptions::omega)
+        .def_readwrite("tau0", &LevenbergMarquardtOptions::tau0)
         ;
 
     m.def("LevenbergMarquardt", &LevenbergMarquardt, "Fit");

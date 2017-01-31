@@ -33,12 +33,11 @@ std::vector<double> NISTfit::LevenbergMarquardt(std::shared_ptr<AbstractEvaluato
         // This is actually the sum of squares of the entries in the error vector
         double F = r.squaredNorm(); 
         if (counter == 0) {
+            double maxDiag = (J.transpose()*J).diagonal().maxCoeff();
             // Madsen recommends setting tau0 to 1e-6 if the initial guess 
             // is believed to be a good estimate of the final solution, or 
             // larger values like 1e-3 or 1 if the guess value is less certain
-            double tau0 = 1;
-            double maxDiag = (J.transpose()*J).diagonal().maxCoeff();
-            lambda = maxDiag*tau0;
+            lambda = maxDiag*options.tau0;
         }
         
         // Levenberg-Marquardt with A*DELTAc = RHS
