@@ -71,18 +71,6 @@ public:
     }
 };
 
-/// The class for the evaluation of a single output value for a single input value
-class DecayingExponentialEvaluator : public NumericEvaluator {
-public:
-    DecayingExponentialEvaluator(int N, const std::vector<std::shared_ptr<NumericInput> > &inputs)
-    {
-        for (auto &in : inputs) {
-            std::shared_ptr<NumericOutput> out(new DecayingExponentialOutput(N, in));
-            add_output(out);
-        }
-    };
-}; 
-
 } /* namespace NISTfit */
 
 #endif
