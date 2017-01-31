@@ -24,6 +24,8 @@ def speedtest(get_eva, args, ofname):
 
     o = pf.LevenbergMarquardtOptions()
     o.tau0 = 1
+
+    fig, ax = plt.subplots(1,1,figsize=(4,3))
     
     for arg in args: # order of Taylor series expansion
         
@@ -47,13 +49,15 @@ def speedtest(get_eva, args, ofname):
             times.append(toc-tic)
         plt.plot(range(1, len(times)+1),time_serial/np.array(times),label='N: '+str(arg))
 
-    plt.legend(loc='best')
-    plt.plot([1,8],[1,8],lw=3)
+    
+    plt.plot([1,8],[1,8],'k',lw=3,label='linear speedup')
     plt.xlabel(r'$N_{\rm threads}$ (-)')
     plt.ylabel(r'Speedup $t_{\rm serial}/t_{\rm parallel}$ (-)')
+    plt.legend(loc='upper left')
+    plt.tight_layout(pad=0.3)
     plt.savefig(ofname)
     plt.show()
 
 if __name__=='__main__':
     speedtest(get_eval_poly, [100,1000,10000],'speedup_polynomial.pdf')
-    speedtest(get_eval_decaying_exponential, [10,20,30,40,50], 'speedup_decaying_exponential.pdf')
+    speedtest(get_eval_decaying_exponential, [10,30,50], 'speedup_decaying_exponential.pdf')
