@@ -25,6 +25,7 @@ double factorial(int N){
  * order to increase the amount of work per evaluation
  */
 double exp_expansion(double x, int N) {
+    if (N <= 0){ return exp(x); }
     double y = 0;
     for (int m=0; m < N; ++m){
         y += pow(x, m)/factorial(m);
@@ -32,6 +33,7 @@ double exp_expansion(double x, int N) {
     return y;
 }
 double sin_expansion(double x, int N) {
+    if (N <= 0){ return sin(x); }
     double y = 0;
     for (int m = 0; m < N; ++m) {
         y += pow(-1, m)*pow(x, 2*m+1)/factorial(2*m+1);
@@ -39,6 +41,7 @@ double sin_expansion(double x, int N) {
     return y;
 }
 double cos_expansion(double x, int N) {
+    if (N <= 0){ return cos(x); }
     double y = 0;
     for (int m = 0; m < N; ++m) {
         y += pow(-1, m)*pow(x, 2*m)/factorial(2*m);
