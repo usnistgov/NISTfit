@@ -4,6 +4,7 @@
 #include "NISTfit/abc.h"
 #include "NISTfit/optimizers.h"
 #include "NISTfit/numeric_evaluators.h"
+#include "NISTfit/examples.h"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -27,6 +28,10 @@ void init_fitter(py::module &m){
 
     py::class_<PolynomialEvaluator, AbstractEvaluator, std::shared_ptr<PolynomialEvaluator> >(m, "PolynomialEvaluator")
         .def(py::init<std::size_t, const std::vector<std::shared_ptr<NumericInput> > & >())
+        ;
+
+    py::class_<DecayingExponentialEvaluator, AbstractEvaluator, std::shared_ptr<DecayingExponentialEvaluator> >(m, "DecayingExponentialEvaluator")
+        .def(py::init<int, const std::vector<std::shared_ptr<NumericInput> > & >())
         ;
 
     py::class_<LevenbergMarquardtOptions>(m, "LevenbergMarquardtOptions")
