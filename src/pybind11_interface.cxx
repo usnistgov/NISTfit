@@ -13,26 +13,31 @@ namespace py = pybind11;
 void init_fitter(py::module &m){
     using namespace NISTfit;
 
-    py::class_<NumericInput, std::shared_ptr<NumericInput> >(m, "NumericInput")
-        .def(py::init<double, double>())
-        .def("x", &NumericInput::x)
-        .def("y", &NumericInput::y);
+    py::class_<AbstractOutput>(m, "AbstractOutput")
+        .def("get_error", &AbstractOutput::get_error)
+        ;
 
-    py::class_<PolynomialOutput>(m, "PolynomialOutput")
+    py::class_<PolynomialOutput, AbstractOutput, std::shared_ptr<PolynomialOutput> >(m, "PolynomialOutput")
         .def(py::init<std::size_t, const std::shared_ptr<NumericInput> &>())
+        ;
+
+    py::class_<DecayingExponentialOutput, AbstractOutput, std::shared_ptr<DecayingExponentialOutput> >(m, "DecayingExponentialOutput")
+        .def(py::init<int, const std::shared_ptr<NumericInput> &>())
         ;
 
     py::class_<AbstractEvaluator>(m, "AbstractEvaluator")
         .def("evaluate_serial", &AbstractEvaluator::evaluate_serial)
+        .def("add_outputs", &AbstractEvaluator::add_outputs)
         ;
 
-    py::class_<PolynomialEvaluator, AbstractEvaluator, std::shared_ptr<PolynomialEvaluator> >(m, "PolynomialEvaluator")
-        .def(py::init<std::size_t, const std::vector<std::shared_ptr<NumericInput> > & >())
+    py::class_<NumericEvaluator, AbstractEvaluator, std::shared_ptr<NumericEvaluator> >(m, "NumericEvaluator")
+        .def(py::init<>())
         ;
 
-    py::class_<DecayingExponentialEvaluator, AbstractEvaluator, std::shared_ptr<DecayingExponentialEvaluator> >(m, "DecayingExponentialEvaluator")
-        .def(py::init<int, const std::vector<std::shared_ptr<NumericInput> > & >())
-        ;
+    py::class_<NumericInput, std::shared_ptr<NumericInput> >(m, "NumericInput")
+        .def(py::init<double, double>())
+        .def("x", &NumericInput::x)
+        .def("y", &NumericInput::y);
 
     py::class_<LevenbergMarquardtOptions>(m, "LevenbergMarquardtOptions")
         .def(py::init<>())
