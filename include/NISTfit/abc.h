@@ -83,6 +83,11 @@ namespace NISTfit{
             m_outputs.push_back(out);
             m_outputs[m_outputs.size()-1]->set_AbstractEvaluator(this);
         }
+        void add_outputs(std::vector<std::shared_ptr<AbstractOutput> > &outputs) {
+            for (auto &out : outputs) {
+                add_output(out);
+            }
+        }
         /// Get a reference to the vector of outputs
         std::vector<std::shared_ptr<AbstractOutput> > & get_outputs() { return m_outputs; };
 

@@ -12,7 +12,9 @@ protected:
 public:
     PolynomialOutput(std::size_t order,
                      const std::shared_ptr<NumericInput> &in) 
-        : NumericOutput(in), m_order(order) {};
+        : NumericOutput(in), m_order(order) {
+        resize(order + 1); // Set the size of the Jacobian row
+    };
     /// The exception handler must be implemented; here we just 
     /// set the residue to a very large number
     void exception_handler(){ m_y_calc = 10000; };
@@ -28,20 +30,6 @@ public:
             Jacobian_row[i] = term;
         }
         m_y_calc = lhs;
-    };
-};
-
-/// The class for the evaluation of a single output value for a single input value
-class PolynomialEvaluator : public NumericEvaluator {
-public:
-    PolynomialEvaluator(std::size_t order, 
-                        const std::vector<std::shared_ptr<NumericInput> > &inputs)
-    {
-        for (auto &in: inputs){
-            std::shared_ptr<NumericOutput> out(new PolynomialOutput(order, in));
-            out->resize(order+1); // Set the size of the Jacobian row
-            add_output(out);
-        }
     };
 };
     

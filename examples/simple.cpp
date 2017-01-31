@@ -6,6 +6,7 @@
 #include "NISTfit/abc.h"
 #include "NISTfit/optimizers.h"
 #include "NISTfit/numeric_evaluators.h"
+#include "NISTfit/examples.h"
 
 #include <iostream>
 #include <chrono>
@@ -18,7 +19,9 @@ protected:
 public:
     SaturationPressureOutput(const std::vector<double> &e,
                              const std::shared_ptr<NumericInput> &in)
-        : NumericOutput(in), m_e(e) {};
+        : NumericOutput(in), m_e(e) {
+        resize(e.size());
+    };
     /// In the highly unlikely case of an exception in this class (implementation of this method is required), 
     /// set the calculated value to something very large
     void exception_handler(){ m_y_calc = 100000; }
@@ -37,20 +40,6 @@ public:
     }
 };
 
-/// The class for the evaluation of a single output value for a single input value
-class SaturationPressureEvaluator : public NumericEvaluator {
-public:
-    SaturationPressureEvaluator(const std::vector<double> &e,
-                                const std::vector<std::shared_ptr<NumericInput> > &inputs)
-    {
-        for (auto &in : inputs) {
-            std::shared_ptr<NumericOutput> out(new SaturationPressureOutput(e, in));
-            out->resize(e.size()); // Set the size of the Jacobian row
-            add_output(out);
-        }
-    };
-};
-
 double fit_waterpanc(bool threading, std::size_t N, short Nthreads) {
     
     std::vector<double> theta(N), LHS(N);
@@ -67,14 +56,16 @@ double fit_waterpanc(bool threading, std::size_t N, short Nthreads) {
         }
     }
 
-    // Create the inputs
-    std::vector<std::shared_ptr<NumericInput> > inputs; 
+    // Create the outputs
+    std::vector<std::shared_ptr<AbstractOutput> > outputs;
     for (int i = 0; i < theta.size(); ++i) {
-        inputs.push_back(std::shared_ptr<NumericInput>(new NumericInput(theta[i], LHS[i])));
+        auto in = std::shared_ptr<NumericInput>(new NumericInput(theta[i], LHS[i]));
+        outputs.push_back(std::shared_ptr<AbstractOutput>(new SaturationPressureOutput(e, in)));
     }
     
     // Instantiate the evaluator
-    std::shared_ptr<AbstractEvaluator> eval(new SaturationPressureEvaluator({ 1, 1.5, 3, 3.5, 4, 7.5 }, inputs));
+    std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+    eval->add_outputs(outputs);
     
     // Run and time
     std::vector<double> c = { 1,1,1,1,1,1 };
@@ -88,13 +79,15 @@ double fit_waterpanc(bool threading, std::size_t N, short Nthreads) {
 
 double fit_polynomial(bool threading, std::size_t Nmax, short Nthreads)
 {
-    std::vector<std::shared_ptr<NumericInput> > inputs;
+    std::vector<std::shared_ptr<AbstractOutput> > outputs;
     for (double i = 0; i < Nmax; ++i) {
         double x = i / ((double)Nmax);
         double y = 1 + 2*x + 3*x*x;
-        inputs.push_back(std::shared_ptr<NumericInput>(new NumericInput(x, y)));
+        auto in = std::shared_ptr<NumericInput>(new NumericInput(x, y));
+        outputs.push_back(std::shared_ptr<AbstractOutput>(new PolynomialOutput(2, in)));
     }
-    std::shared_ptr<AbstractEvaluator> eval(new PolynomialEvaluator(2, inputs));
+    std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+    eval->add_outputs(outputs);
     
     std::vector<double> c = { -10, -2, 2.5 };
     auto startTime = std::chrono::system_clock::now();
@@ -108,13 +101,15 @@ double fit_polynomial(bool threading, std::size_t Nmax, short Nthreads)
 double fit_decaying_exponential(bool threading, std::size_t Nmax, short Nthreads, long N)
 {
     double a = 0.2, b = 3, c = 1.3;
-    std::vector<std::shared_ptr<NumericInput> > inputs;
+    std::vector<std::shared_ptr<AbstractOutput> > outputs;
     for (double i = 0; i < Nmax; ++i) {
         double x = i / ((double)Nmax);
         double y = exp(-a*x)*sin(b*x)*cos(c*x);
-        inputs.push_back(std::shared_ptr<NumericInput>(new NumericInput(x, y)));
+        auto in = std::shared_ptr<NumericInput>(new NumericInput(x, y));
+        outputs.push_back(std::shared_ptr<AbstractOutput>(new DecayingExponentialOutput(N, in)));
     }
-    std::shared_ptr<AbstractEvaluator> eval(new DecayingExponentialEvaluator(N, inputs));
+    std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+    eval->add_outputs(outputs);
 
     std::vector<double> c0 = { 1, 1, 1 };
     auto startTime = std::chrono::system_clock::now();
@@ -125,18 +120,15 @@ double fit_decaying_exponential(bool threading, std::size_t Nmax, short Nthreads
     return std::chrono::duration<double>(endTime - startTime).count();
 }
 
-
 void speedtest_fit_polynomial(short Nthread_max)
 {
     std::cout << "XXXXXXXXXX POLYNOMIAL XXXXXXXXXX" << std::endl;
-    for (short Nthreads = 1; Nthreads <= Nthread_max; ++Nthreads) {
-        for (std::size_t N = 100; N < 10000000; N *= 10) {
-            std::vector<double> times;
-            for (auto &threading : { true, false }) {
-                auto t = fit_polynomial (threading, N, Nthreads);
-                times.push_back(t);
-            }
-            printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), times[1] / times[0], times[1], times[0]);
+    for (std::size_t N = 10000; N < 10000000; N *= 10) {
+        auto time_serial = fit_polynomial(false, N, 1);
+        for (short Nthreads = 2; Nthreads <= Nthread_max; ++Nthreads) {
+            const bool threading = true;
+            auto time_parallel = fit_polynomial(threading, N, Nthreads);
+            printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), time_serial/time_parallel, time_serial, time_parallel);
         }
     }
 }
@@ -144,29 +136,25 @@ void speedtest_fit_polynomial(short Nthread_max)
 void speedtest_fit_water_ancillary(short Nthread_max)
 {
     std::cout << "XXXXXXXXXX WATER ANCILLARY XXXXXXXXXX" << std::endl;
-    for (short Nthreads = 1; Nthreads <= Nthread_max; ++Nthreads) {
-        for (std::size_t N = 100; N < 10000000; N *= 10) {
-            std::vector<double> times;
-            for (auto &threading : { true, false }) {
-                auto t = fit_waterpanc(threading, N, Nthreads);
-                times.push_back(t);
-            }
-            printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), times[1] / times[0], times[1], times[0]);
+    for (std::size_t N = 10000; N < 10000000; N *= 10) {
+        auto time_serial = fit_waterpanc(false, N, 1);
+        for (short Nthreads = 2; Nthreads <= Nthread_max; ++Nthreads) {
+            const bool threading = true;
+            auto time_parallel = fit_waterpanc(threading, N, Nthreads);
+            printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), time_serial / time_parallel, time_serial, time_parallel);
         }
     }
 }
 
 void speedtest_decaying_exponential(short Nthread_max)
 {   
-    std::cout << "XXXXXXXXXX DECAYING EXPONENTIAL with 50-term expansions XXXXXXXXXX" << std::endl;
-    for (short Nthreads = 1; Nthreads <= Nthread_max; ++Nthreads) {
-        for (long N = 5; N < 100; N *= 10) {
-            std::vector<double> times;
-            for (auto &threading : { true, false }) {
-                auto t = fit_decaying_exponential(threading, 10000, Nthreads, N);
-                times.push_back(t);
-            }
-            printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), times[1] / times[0], times[1], times[0]);
+    std::cout << "XXXXXXXXXX DECAYING EXPONENTIAL with N-term expansions XXXXXXXXXX" << std::endl;
+    for (long N = 10; N <= 50; N += 20) {
+        auto time_serial = fit_decaying_exponential(false, 10000, 1, N);
+        for (short Nthreads = 2; Nthreads <= Nthread_max; ++Nthreads) {
+            const bool threading = true;
+            auto time_parallel = fit_decaying_exponential(threading, 10000, Nthreads, N);
+            printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), time_serial/time_parallel, time_serial, time_parallel);
         }
     }
 }
