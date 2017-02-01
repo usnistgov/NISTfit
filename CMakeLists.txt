@@ -12,7 +12,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # Munge the arguments for g++ (might not be the best way, but seems to work)
 if (${CMAKE_GENERATOR} MATCHES  "Unix Makefile")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -fPIC")
 endif()
 
 if (NISTFIT_EXAMPLES)
