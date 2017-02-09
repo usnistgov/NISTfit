@@ -47,17 +47,17 @@ def speedtest(get_eva, args, ofname):
             cfinal = pf.LevenbergMarquardt(eva, o)
             toc = time.clock()
             times.append(toc-tic)
-        plt.plot(range(1, len(times)+1),time_serial/np.array(times),label='N: '+str(arg))
+        line, = plt.plot(range(1, len(times)+1),time_serial/np.array(times))
+        plt.text(len(times), (time_serial/np.array(times))[-1], 'N: '+str(arg), ha='right', va='center',color=line.get_color(),bbox = dict(facecolor='w',edgecolor='none'))
 
-    
     plt.plot([1,8],[1,8],'k',lw=3,label='linear speedup')
     plt.xlabel(r'$N_{\rm threads}$ (-)')
     plt.ylabel(r'Speedup $t_{\rm serial}/t_{\rm parallel}$ (-)')
-    plt.legend(loc='upper left')
+    #plt.legend(loc='upper left')
     plt.tight_layout(pad=0.3)
     plt.savefig(ofname)
     plt.show()
 
 if __name__=='__main__':
     speedtest(get_eval_poly, [100,1000,10000],'speedup_polynomial.pdf')
-    speedtest(get_eval_decaying_exponential, [10,30,50], 'speedup_decaying_exponential.pdf')
+    speedtest(get_eval_decaying_exponential, [-1,10,30,50], 'speedup_decaying_exponential.pdf')
