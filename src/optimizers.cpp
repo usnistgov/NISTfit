@@ -28,25 +28,25 @@ std::vector<double> NISTfit::LevenbergMarquardt(std::shared_ptr<AbstractEvaluato
         };
         const Eigen::MatrixXd &J = E->get_Jacobian_matrix();
         const Eigen::VectorXd &r = E->get_error_vector();
+        const Eigen::MatrixXd A = J.transpose()*J;
         //printf("r(min,max,mean): %g %g %g\n", r.minCoeff(), r.maxCoeff(), r.mean());
         
         // This is actually the sum of squares of the entries in the error vector
         double F = r.squaredNorm(); 
         if (counter == 0) {
-            double maxDiag = (J.transpose()*J).diagonal().maxCoeff();
+            double maxDiag = A.diagonal().maxCoeff();
             // Madsen recommends setting tau0 to 1e-6 if the initial guess 
             // is believed to be a good estimate of the final solution, or 
             // larger values like 1e-3 or 1 if the guess value is less certain
             lambda = maxDiag*options.tau0;
         }
         
-        // Levenberg-Marquardt with A*DELTAc = RHS
-        Eigen::MatrixXd t2 = lambda*(J.transpose()*J).diagonal().asDiagonal();
-        Eigen::MatrixXd A = J.transpose()*J + t2;
-        Eigen::MatrixXd RHS = -J.transpose()*r;
+        // Levenberg-Marquardt with LHS*DELTAc = RHS
+        const Eigen::MatrixXd LHS = A + lambda*A.diagonal().asDiagonal().toDenseMatrix();
+        const Eigen::MatrixXd RHS = -J.transpose()*r;
         
         // Calculate the step
-        Eigen::VectorXd DELTAc = options.omega*A.colPivHouseholderQr().solve(RHS);
+        const Eigen::VectorXd DELTAc = options.omega*LHS.colPivHouseholderQr().solve(RHS);
         // Take the step
         c_wrap += DELTAc;
         
