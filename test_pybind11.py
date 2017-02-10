@@ -67,5 +67,5 @@ def speedtest(get_eva, args, ofname):
     plt.show()
 
 if __name__=='__main__':
-    speedtest(get_eval_poly, [100,1000,10000],'speedup_polynomial.pdf')
+    speedtest(get_eval_poly, [100,10000],'speedup_polynomial.pdf')
     speedtest(get_eval_decaying_exponential, [-1,5,20], 'speedup_decaying_exponential.pdf')
