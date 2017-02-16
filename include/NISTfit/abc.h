@@ -255,6 +255,28 @@ namespace NISTfit{
             }
             return J;
         };
+        Eigen::MatrixXd build_Jacobian_matrix_numerically(double dx) {
+            std::size_t ncol = m_outputs[0]->get_Jacobian_row().size();
+            Eigen::MatrixXd Jfd(m_outputs.size(), ncol);
+
+            // Initial values
+            auto c0 = get_const_coefficients();
+            set_coefficients(c0);
+            evaluate_serial(0,m_outputs.size(),0);
+            Eigen::VectorXd r0 = get_error_vector();
+
+            // Iterate over the columns
+            for (int icol = 0; icol < ncol; ++icol) {
+                std::vector<double> c = c0;
+                double dc = dx*c[icol];
+                c[icol] += dc;
+                set_coefficients(c);
+                evaluate_serial(0, m_outputs.size(), 0);
+                r = get_error_vector();
+                Jfd.col(icol) = (r-r0)/dc;
+            }
+            return Jfd;
+        };
 
         /** @brief Construct the residual vector of residuals for each data point
          * \f[ r_i = (y_{\rm fit} - y_{\rm given})_i\f]
