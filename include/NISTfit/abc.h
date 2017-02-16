@@ -76,7 +76,7 @@ namespace NISTfit{
         std::mutex quit_mutex;
     public:
         virtual void set_coefficients(const std::vector<double> &) = 0;
-        virtual const std::vector<double> & get_const_coefficients() = 0;
+        virtual const std::vector<double> & get_const_coefficients() const = 0;
         /// Get the size of the outputs
         std::size_t get_outputs_size() { return m_outputs.size(); };
         void add_output(std::shared_ptr<AbstractOutput> out) {
