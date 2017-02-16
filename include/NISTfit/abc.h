@@ -41,7 +41,7 @@ namespace NISTfit{
         /// and then setting an error flag/message, etc.
         virtual void exception_handler() = 0;
         /// Get the pointer to the AbstractEvaluator linked with this output
-        virtual AbstractEvaluator * get_AbstractEvaluator(){ return m_evaluator; }
+        virtual const AbstractEvaluator * const get_AbstractEvaluator() const { return m_evaluator; }
         /// Set the pointer to the AbstractEvaluator linked with this output
         virtual void set_AbstractEvaluator(AbstractEvaluator *evaluator) { m_evaluator = evaluator; }
     };
@@ -288,7 +288,7 @@ namespace NISTfit{
         std::vector<double> m_c;
     public:
         void set_coefficients(const std::vector<double> &c){ m_c = c; };
-        const std::vector<double> & get_const_coefficients(){ return m_c; };
+        const std::vector<double> & get_const_coefficients() const { return m_c; };
     };
 
     /// The data structure for an output for the single y output variable
