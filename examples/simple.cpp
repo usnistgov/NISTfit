@@ -28,7 +28,7 @@ public:
     void evaluate_one(){
         // Do the calculation
         double y = 0;
-        const std::vector<double> &c = get_AbstractEvaluator()->get_const_coefficients();
+        const std::vector<double> &c = get_AbstractEvaluator().get_const_coefficients();
         for (int repeat = 0; repeat < 1; ++repeat){
         for (std::size_t i = 0; i < m_e.size(); ++i) {
             double term = pow(m_in->x(), m_e[i]);

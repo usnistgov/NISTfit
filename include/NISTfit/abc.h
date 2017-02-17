@@ -41,7 +41,7 @@ namespace NISTfit{
         /// and then setting an error flag/message, etc.
         virtual void exception_handler() = 0;
         /// Get the pointer to the AbstractEvaluator linked with this output
-        virtual const AbstractEvaluator * const get_AbstractEvaluator() const { return m_evaluator; }
+        virtual const AbstractEvaluator & get_AbstractEvaluator() { return *m_evaluator; }
         /// Set the pointer to the AbstractEvaluator linked with this output
         virtual void set_AbstractEvaluator(AbstractEvaluator *evaluator) { m_evaluator = evaluator; }
     };
