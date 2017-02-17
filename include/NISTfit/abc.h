@@ -28,8 +28,6 @@ namespace NISTfit{
         /// when the AbstractOutput (or derived class thereof) is added to the AbstractEvaluator.
         /// The AbstractEvaluator::add_output() function takes case of this automatically.
         AbstractEvaluator *m_evaluator;
-        /// The index of this output
-        std::size_t m_index;
     public:
         virtual double get_error() = 0;
         virtual std::vector<double> &get_Jacobian_row() { throw std::exception(); };
@@ -42,13 +40,10 @@ namespace NISTfit{
         /// evaluate_one function.  You might want to consider re-throwing the exception in the function
         /// and then setting an error flag/message, etc.
         virtual void exception_handler() = 0;
-        /// Get the reference to the AbstractEvaluator linked with this output
-        virtual AbstractEvaluator & get_AbstractEvaluator() { return *m_evaluator; }
+        /// Get the pointer to the AbstractEvaluator linked with this output
+        virtual const AbstractEvaluator * const get_AbstractEvaluator() const { return m_evaluator; }
         /// Set the pointer to the AbstractEvaluator linked with this output
         virtual void set_AbstractEvaluator(AbstractEvaluator *evaluator) { m_evaluator = evaluator; }
-        /// Set the index for this output
-        void set_index(std::size_t index){ m_index = index; }
-        std::size_t get_index(){ return m_index; }
     };
 
     // Convenience type definition
@@ -154,23 +149,15 @@ namespace NISTfit{
             // Join all the threads
             for (auto& td : thread_data) { td.t.join(); }
         };
-        void add_output(std::shared_ptr<AbstractOutput> out) {
-            m_outputs.push_back(out);
-            m_outputs[m_outputs.size() - 1]->set_AbstractEvaluator(this);
-            m_outputs[m_outputs.size() - 1]->set_index(m_outputs.size() - 1);
-        }
     public:
-        virtual void set_coefficients(const std::vector<double> &) = 0; 
+        virtual void set_coefficients(const std::vector<double> &) = 0;
         virtual const std::vector<double> & get_const_coefficients() const = 0;
-        
-        /// Return a pointer(reference) to a row of the Jacobian that should be populated
-        /// by the output
-        Eigen::MatrixXd::RowXpr get_Jacobian_row(std::size_t i){ 
-            return J.row(i);
-        };
         /// Get the size of the outputs
         std::size_t get_outputs_size() { return m_outputs.size(); };
-        
+        void add_output(std::shared_ptr<AbstractOutput> out) {
+            m_outputs.push_back(out);
+            m_outputs[m_outputs.size()-1]->set_AbstractEvaluator(this);
+        }
         void add_outputs(std::vector<std::shared_ptr<AbstractOutput> > &outputs) {
             for (auto &out : outputs) {
                 add_output(out);
@@ -210,10 +197,8 @@ namespace NISTfit{
                 }
             }
         };
-        /**
-         * @brief Evaluate all the outputs in parallel
-         * @param Nthreads The number of threads to use
-         */
+
+        
         void evaluate_parallel(short Nthreads){
             
             // Set up threads but put them in holding pattern
@@ -261,6 +246,15 @@ namespace NISTfit{
          * It is constructed by taking the rows of the Jacobian matrix stored in instances of AbstractOutput
          */
         const Eigen::MatrixXd &get_Jacobian_matrix() {
+            std::size_t ncol = m_outputs[0]->get_Jacobian_row().size();
+            J.resize(m_outputs.size(), ncol);
+            int i = 0;
+            for (auto &o : m_outputs) {
+                const std::vector<double> &Jrow = o->get_Jacobian_row();
+                Eigen::Map<const Eigen::VectorXd> Jrow_wrap(&Jrow[0], Jrow.size());
+                J.row(i) = Jrow_wrap;
+                i++;
+            }
             return J;
         };
         Eigen::MatrixXd build_Jacobian_matrix_numerically(double dx) {
@@ -317,10 +311,7 @@ namespace NISTfit{
     protected:
         std::vector<double> m_c;
     public:
-        void set_coefficients(const std::vector<double> &c){ 
-            m_c = c; 
-            J.resize(get_outputs_size(), c.size()); 
-        };
+        void set_coefficients(const std::vector<double> &c){ m_c = c; };
         const std::vector<double> & get_const_coefficients() const { return m_c; };
     };
 
@@ -329,12 +320,15 @@ namespace NISTfit{
         protected:
             const std::shared_ptr<NumericInput> m_in;
             double m_y_calc;
+            std::vector<double> Jacobian_row; // Partial derivative of calculated value with respect to each independent variable
         public:
             /// Copy constructor
             NumericOutput(const std::shared_ptr<NumericInput> &in) : m_in(in) {};
             /// Move constructor
             NumericOutput(const std::shared_ptr<NumericInput> &&in) : m_in(in) {};
             virtual double get_error(){ return m_y_calc - m_in->y(); };
+            std::vector<double> & get_Jacobian_row() { return Jacobian_row; }
+            void resize(std::size_t N){ Jacobian_row.resize(N); };
             std::shared_ptr<AbstractInput> get_input(){ return m_in; };
     };
     
