@@ -11,9 +11,8 @@ protected:
     std::size_t m_order; // The order of the polynomial (2: quadratic, 3: cubic, etc...)
 public:
     PolynomialOutput(std::size_t order,
-                     const std::shared_ptr<NumericInput> &in) 
+                     const std::shared_ptr<NumericInput> &in)
         : NumericOutput(in), m_order(order) {
-        resize(order + 1); // Set the size of the Jacobian row
     };
     /// The exception handler must be implemented; here we just 
     /// set the residue to a very large number
@@ -21,8 +20,10 @@ public:
     void evaluate_one(){
         // Get the input
         double lhs = 0;
+        auto &AE = get_AbstractEvaluator();
+        const std::vector<double> &c = AE.get_const_coefficients();
+        Eigen::MatrixXd::RowXpr &Jacobian_row = AE.get_Jacobian_row(get_index());
         // Do the calculation
-        const std::vector<double> &c = get_AbstractEvaluator()->get_const_coefficients();
         if (c.size() != m_order +1){ throw std::range_error("lengths do not agree"); }
         for (std::size_t i = 0; i < m_order+1; ++i) {
             double term = pow(m_in->x(), static_cast<int>(i));

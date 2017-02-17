@@ -55,18 +55,19 @@ protected:
 public:
     DecayingExponentialOutput(int N,  
                               const std::shared_ptr<NumericInput> &in)
-        : NumericOutput(in), N(N) { resize(3); };
+        : NumericOutput(in), N(N) { };
     /// In the highly unlikely case of an exception in this class (implementation of this method is required), 
     /// set the calculated value to something very large
     void exception_handler() { m_y_calc = 100000; }
     void evaluate_one() {
+        const std::vector<double> &c = get_AbstractEvaluator().get_const_coefficients();
+        Eigen::MatrixXd::RowXpr &Jacobian_row = get_AbstractEvaluator().get_Jacobian_row(get_index());
         // Do the calculation
-        const std::vector<double> &c = get_AbstractEvaluator()->get_const_coefficients();
         const double x = m_in->x(), e = exp_expansion(-c[0]*x, N), s1 = sin_expansion(c[1]*x, N), c2 = cos_expansion(c[2]*x, N);
         double y = e*s1*c2;
-        Jacobian_row[0] = -x*y;
-        Jacobian_row[1] = x*e*cos_expansion(c[1]*x,N)*c2;
-        Jacobian_row[2] = -x*e*s1*sin_expansion(c[2]*x,N);
+        Jacobian_row(0) = -x*y;
+        Jacobian_row(1) = x*e*cos_expansion(c[1]*x,N)*c2;
+        Jacobian_row(2) = -x*e*s1*sin_expansion(c[2]*x,N);
         m_y_calc = y;
     }
 };

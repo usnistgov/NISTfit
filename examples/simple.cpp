@@ -19,16 +19,18 @@ protected:
 public:
     SaturationPressureOutput(const std::vector<double> &e,
                              const std::shared_ptr<NumericInput> &in)
-        : NumericOutput(in), m_e(e) {
-        resize(e.size());
-    };
+        : NumericOutput(in), m_e(e) { };
     /// In the highly unlikely case of an exception in this class (implementation of this method is required), 
     /// set the calculated value to something very large
     void exception_handler(){ m_y_calc = 100000; }
     void evaluate_one(){
+        // Retrieve references to required data structures
+        auto &AE = get_AbstractEvaluator();
+        const std::vector<double> &c = AE.get_const_coefficients();
+        Eigen::MatrixXd::RowXpr &Jacobian_row = AE.get_Jacobian_row(get_index());
+        
         // Do the calculation
         double y = 0;
-        const std::vector<double> &c = get_AbstractEvaluator()->get_const_coefficients();
         for (int repeat = 0; repeat < 1; ++repeat){
         for (std::size_t i = 0; i < m_e.size(); ++i) {
             double term = pow(m_in->x(), m_e[i]);
