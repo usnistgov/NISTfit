@@ -149,15 +149,17 @@ namespace NISTfit{
             // Join all the threads
             for (auto& td : thread_data) { td.t.join(); }
         };
+        /// Add a single output to the list of outputs and connect pointer to AbstractEvaluator
+        void add_output(std::shared_ptr<AbstractOutput> out) {
+            m_outputs.push_back(out);
+            m_outputs[m_outputs.size() - 1]->set_AbstractEvaluator(this);
+        }
     public:
         virtual void set_coefficients(const std::vector<double> &) = 0;
         virtual const std::vector<double> & get_const_coefficients() const = 0;
         /// Get the size of the outputs
         std::size_t get_outputs_size() { return m_outputs.size(); };
-        void add_output(std::shared_ptr<AbstractOutput> out) {
-            m_outputs.push_back(out);
-            m_outputs[m_outputs.size()-1]->set_AbstractEvaluator(this);
-        }
+        /// Add a vector of instances derived from AbstractOutput to this evaluator
         void add_outputs(std::vector<std::shared_ptr<AbstractOutput> > &outputs) {
             for (auto &out : outputs) {
                 add_output(out);
@@ -165,7 +167,7 @@ namespace NISTfit{
         }
         /// Get a reference to the vector of outputs
         std::vector<std::shared_ptr<AbstractOutput> > & get_outputs() { return m_outputs; };
-
+        /// Destructor
         ~AbstractEvaluator() {
             if (!thread_data.empty()) {
                 // auto startTime = std::chrono::system_clock::now();
@@ -198,7 +200,10 @@ namespace NISTfit{
             }
         };
 
-        
+        /** 
+         * @brief Evaluate all the outputs in parallel
+         * @param Nthreads The number of threads over which the calculations should be distributed
+         */
         void evaluate_parallel(short Nthreads){
             
             // Set up threads but put them in holding pattern
@@ -236,8 +241,7 @@ namespace NISTfit{
             futures.clear();
         };
 
-        /** 
-         * @brief Construct the Jacobian matrix \f$\mathbf{J}\f$
+        /** @brief Construct the Jacobian matrix \f$\mathbf{J}\f$
          *
          * Each entry in the Jacobian matrix is given by
          * \f[ J_{ij} = \frac{\partial r_i}{\partial c_j} \f]
@@ -281,7 +285,8 @@ namespace NISTfit{
         };
 
         /** @brief Construct the residual vector of residuals for each data point
-         * \f[ r_i = (y_{\rm fit} - y_{\rm given})_i\f]
+         * 
+         * \f[ r_i = (y_{\rm model} - y_{\rm given})_i\f]
          *
          * Internally, the AbstractOutput::get_error() function is called on each AbstractOutput managed by this evaluator.  One 
          * of AbstractOutput::evaluate_serial() or AbstractOutput::evaluate_threaded() should have already been called before calling this function
