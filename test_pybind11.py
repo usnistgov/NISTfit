@@ -47,6 +47,7 @@ def speedtest(get_eva, args, ofname):
         o.threading = True
         times = []
         for Nthreads in [1,2,3,4,5,6,7,8]:
+            pf.Eigen_setNbThreads(Nthreads)
             eva, o.c0 = get_eva(arg)
             o.Nthreads = Nthreads
             elap = 0

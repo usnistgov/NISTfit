@@ -49,7 +49,9 @@ void init_fitter(py::module &m){
         ;
 
     m.def("LevenbergMarquardt", &LevenbergMarquardt, "Fit");
-    
+
+    m.def("Eigen_nbThreads", [](){ return Eigen::nbThreads(); });
+    m.def("Eigen_setNbThreads", [](int Nthreads) { return Eigen::setNbThreads(Nthreads); });
 }
 
 PYBIND11_PLUGIN(PolyFitter) {
