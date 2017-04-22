@@ -59,8 +59,8 @@ public:
     /// In the highly unlikely case of an exception in this class, 
     /// (implementation of this method is required), set the calculated value 
     /// to something very large
-    void exception_handler() { m_y_calc = 100000; }
-    void evaluate_one() {
+    void exception_handler() override { m_y_calc = 100000; }
+    void evaluate_one() override {
         // Get a reference to the coefficients
         const std::vector<double> &c = get_AbstractEvaluator().get_const_coefficients();
         // Do the calculation
