@@ -27,11 +27,14 @@ void init_fitter(py::module &m){
 
     py::class_<AbstractEvaluator>(m, "AbstractEvaluator")
         .def("evaluate_serial", &AbstractEvaluator::evaluate_serial)
+        .def("evaluate_parallel", &AbstractEvaluator::evaluate_parallel)
+        .def("get_outputs_size", &AbstractEvaluator::get_outputs_size)
         .def("add_outputs", &AbstractEvaluator::add_outputs)
         ;
 
     py::class_<NumericEvaluator, AbstractEvaluator, std::shared_ptr<NumericEvaluator> >(m, "NumericEvaluator")
         .def(py::init<>())
+        .def("set_coefficients", &NumericEvaluator::set_coefficients)
         ;
 
     py::class_<NumericInput, std::shared_ptr<NumericInput> >(m, "NumericInput")
@@ -54,8 +57,8 @@ void init_fitter(py::module &m){
     m.def("Eigen_setNbThreads", [](int Nthreads) { return Eigen::setNbThreads(Nthreads); });
 }
 
-PYBIND11_PLUGIN(PolyFitter) {
-    py::module m("PolyFitter", "PolyFitter module");
+PYBIND11_PLUGIN(NISTfit) {
+    py::module m("NISTfit", "NISTfit module");
 
     init_fitter(m);
 

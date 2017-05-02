@@ -31,14 +31,11 @@ if (NISTFIT_EXAMPLES)
         message(STATUS "Set the number of threads")
         add_definitions(-DNTHREAD_MAX=${NISTFIT_NTHREAD_MAX})
     endif()
-elseif (NISTFIT_STATIC_LIBRARY OR NISTFIT_PYBIND11)
+elseif (NISTFIT_STATIC_LIBRARY)
     add_library(NISTfit STATIC ${APP_SOURCES})
     # Add target include directories for easy linking with other applications
     target_include_directories(NISTfit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
-endif()
-
-if (NISTFIT_PYBIND11)
-
+elseif (NISTFIT_PYBIND11)
     # ----------------------------
     # Build pybind11 python module
     # ----------------------------
@@ -47,6 +44,7 @@ if (NISTFIT_PYBIND11)
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/externals/Eigen")
     add_subdirectory("${CMAKE_SOURCE_DIR}/externals/pybind11")
     add_definitions(-DPYBIND11)
-    pybind11_add_module(PolyFitter "${CMAKE_SOURCE_DIR}/src/pybind11_interface.cxx")
-    target_link_libraries (PolyFitter PUBLIC NISTfit)
+    pybind11_add_module(NISTfit ${APP_SOURCES} "${CMAKE_SOURCE_DIR}/src/pybind11_interface.cxx")
+else()
+    message(FATAL_ERROR "You must select a build option")
 endif()
