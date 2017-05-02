@@ -1,6 +1,5 @@
 import NISTfit
-import numpy as np
-import time
+import numpy as np, time
 import matplotlib.pyplot as plt
 
 def get_eval_poly(Npoints):
@@ -34,30 +33,30 @@ def speedtest(get_eva, args, ofname):
         
         # Serial evaluation
         eva, o.c0 = get_eva(arg)
-        Nserial = 30
-        elap = 0
+        Nserial = 3000
+        eva.set_coefficients(o.c0)
+        N = eva.get_outputs_size()
+        tic = time.clock()
         for i in range(Nserial):
-            tic = time.clock()
-            o.threading = False
-            cfinal = NISTfit.LevenbergMarquardt(eva, o)
-            toc = time.clock()
-            elap += toc-tic
+            eva.evaluate_serial(0, N, 0)
+        toc = time.clock()
+        elap = toc-tic
         time_serial = elap/Nserial
 
         # Parallel evaluation
         o.threading = True
         times = []
         for Nthreads in [1,2,3,4,5,6,7,8]:
-            NISTfit.Eigen_setNbThreads(Nthreads)
+            #NISTfit.Eigen_setNbThreads(Nthreads)
             eva, o.c0 = get_eva(arg)
-            o.Nthreads = Nthreads
+            eva.set_coefficients(o.c0)
             elap = 0
-            Nrepeat = 30
+            tic = time.clock()
+            Nrepeat = 3000
             for i in range(Nrepeat):
-                tic = time.clock()
-                cfinal = NISTfit.LevenbergMarquardt(eva, o)
-                toc = time.clock()
-                elap += toc-tic
+                cfinal = eva.evaluate_parallel(Nthreads)
+            toc = time.clock()
+            elap = toc-tic
             times.append(elap/Nrepeat)
         line, = plt.plot(range(1, len(times)+1),time_serial/np.array(times))
         if arg < 0:
