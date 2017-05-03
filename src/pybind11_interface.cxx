@@ -10,8 +10,42 @@
 #include <pybind11/stl.h>
 namespace py = pybind11;
 
+using namespace NISTfit;
+
+double fit_decaying_exponential(bool threading, std::size_t Nmax, short Nthreads, long N, long Nrepeat)
+{
+    double a = 0.2, b = 3, c = 1.3;
+    std::vector<std::shared_ptr<AbstractOutput> > outputs;
+    for (double i = 0; i < Nmax; ++i) {
+        double x = i / ((double)Nmax);
+        double y = exp(-a*x)*sin(b*x)*cos(c*x);
+        auto in = std::shared_ptr<NumericInput>(new NumericInput(x, y));
+        outputs.push_back(std::shared_ptr<AbstractOutput>(new DecayingExponentialOutput(N, in)));
+    }
+    std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+    eval->add_outputs(outputs);
+
+    std::vector<double> c0 = { 1, 1, 1 };
+    auto startTime = std::chrono::system_clock::now();
+    auto opts = LevenbergMarquardtOptions();
+    opts.c0 = c0; opts.threading = threading; opts.Nthreads = Nthreads;
+    eval->set_coefficients(opts.c0);
+    if(threading){
+        for (auto jj  = 0; jj < Nrepeat; ++jj){
+            eval->evaluate_parallel(Nthreads);
+       }
+    } 
+    else{
+        for (auto jj  = 0; jj < Nrepeat; ++jj){
+            eval->evaluate_serial(0,eval->get_outputs_size(),0);
+       }
+    }
+    auto endTime = std::chrono::system_clock::now();
+    return std::chrono::duration<double>(endTime - startTime).count();
+}
+
 void init_fitter(py::module &m){
-    using namespace NISTfit;
+    
 
     py::class_<AbstractOutput>(m, "AbstractOutput")
         .def("get_error", &AbstractOutput::get_error)
@@ -52,6 +86,7 @@ void init_fitter(py::module &m){
         ;
 
     m.def("LevenbergMarquardt", &LevenbergMarquardt, "Fit");
+    m.def("fit_decaying_exponential", &fit_decaying_exponential);
 
     m.def("Eigen_nbThreads", [](){ return Eigen::nbThreads(); });
     m.def("Eigen_setNbThreads", [](int Nthreads) { return Eigen::setNbThreads(Nthreads); });
