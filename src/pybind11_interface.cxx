@@ -8,6 +8,7 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/eigen.h>
 namespace py = pybind11;
 
 using namespace NISTfit;
@@ -64,6 +65,7 @@ void init_fitter(py::module &m){
         .def("evaluate_parallel", &AbstractEvaluator::evaluate_parallel)
         .def("get_outputs_size", &AbstractEvaluator::get_outputs_size)
         .def("add_outputs", &AbstractEvaluator::add_outputs)
+        .def("get_error_vector", &AbstractEvaluator::get_error_vector, py::return_value_policy::copy)
         ;
 
     py::class_<NumericEvaluator, AbstractEvaluator, std::shared_ptr<NumericEvaluator> >(m, "NumericEvaluator")
