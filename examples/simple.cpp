@@ -139,7 +139,7 @@ void speedtest_decaying_exponential(short Nthread_max)
         eval->add_outputs(outputs);
         return eval;
     };
-    auto eval_decaying_exponential = [](auto &eval, short Nrepeats,  bool threading, short Nthreads = 1){
+    auto eval_decaying_exponential = [](std::shared_ptr<AbstractEvaluator> &eval, short Nrepeats,  bool threading, short Nthreads = 1){
         auto startTime = std::chrono::system_clock::now();
         eval->set_coefficients({1,1,1});
         for (auto i = 0; i < Nrepeats; ++i){
@@ -153,7 +153,7 @@ void speedtest_decaying_exponential(short Nthread_max)
         auto endTime = std::chrono::system_clock::now();
         return std::chrono::duration<double>(endTime - startTime).count();
     };
-    auto fit_decaying_exponential = [](auto &eval, bool threading, short Nthreads = 1){
+    auto fit_decaying_exponential = [](std::shared_ptr<AbstractEvaluator> &eval, bool threading, short Nthreads = 1){
         std::vector<double> c0 = { 1, 1, 1 };
         auto startTime = std::chrono::system_clock::now();
         auto opts = LevenbergMarquardtOptions();
