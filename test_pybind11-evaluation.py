@@ -1,8 +1,6 @@
 import NISTfit
-import numpy as np
-import time
+import numpy as np, time
 import matplotlib.pyplot as plt
-import functools
 
 def get_eval_poly(Npoints):
     x = np.linspace(0,1,Npoints)
@@ -24,34 +22,6 @@ def get_eval_decaying_exponential(Norder):
     eva.add_outputs(outputs)
     return eva, [0.5, 2, 0.8]
 
-def get_eval_decaying_exponential_finite_diff(Norder):
-    a = 0.2; b = 3; c = 1.3;
-    x = np.linspace(0, 2, 1000)
-    y = np.exp(-a*x)*np.sin(b*x)*np.cos(c*x)
-    dc = [0.01]*3 # epsilon used for each coefficient in the finite difference
-
-    outputs = []
-
-    for _x, _y in zip(x, y):
-        # def f(c, x):
-        #     np.exp(-c[0]*self.x)*np.sin(c[1]*self.x)*np.cos(c[2]*self.x)
-        # o = pf.FiniteDiffOutput(pf.NumericInput(_x, _y), functools.partial(f, x=_x),dc)
-
-        class Output(pf.FiniteDiffOutput):
-            def __init__(self, input, x):
-                super(Output, self).__init__(input,lambda c: c[0]+c[1], dc)
-                self.x = x
-
-            def call_func(self, c):
-                return np.exp(-c[0]*self.x)*np.sin(c[1]*self.x)*np.cos(c[2]*self.x)
-        
-        o = Output(pf.NumericInput(_x, _y), _x)
-        outputs.append(o)
-
-    eva = pf.NumericEvaluator()
-    eva.add_outputs(outputs)
-    return eva, [0.5, 2, 0.8]
-
 def speedtest(get_eva, args, ofname):
 
     o = NISTfit.LevenbergMarquardtOptions()
@@ -63,32 +33,31 @@ def speedtest(get_eva, args, ofname):
         
         # Serial evaluation
         eva, o.c0 = get_eva(arg)
-        Nserial = 1
-        elap = 0
+        Nserial = 3000
+        eva.set_coefficients(o.c0)
+        N = eva.get_outputs_size()
+        tic = time.clock()
         for i in range(Nserial):
-            tic = time.clock()
-            o.threading = False
-            cfinal = NISTfit.LevenbergMarquardt(eva, o)
-            toc = time.clock()
-            elap += toc-tic
+            eva.evaluate_serial(0, N, 0)
+        toc = time.clock()
+        elap = toc-tic
         time_serial = elap/Nserial
 
         # Parallel evaluation
         o.threading = True
         times = []
         for Nthreads in [1,2,3,4,5,6,7,8]:
-            NISTfit.Eigen_setNbThreads(Nthreads)
+            #NISTfit.Eigen_setNbThreads(Nthreads)
             eva, o.c0 = get_eva(arg)
-            o.Nthreads = Nthreads
+            eva.set_coefficients(o.c0)
             elap = 0
-            Nrepeat = 30
+            tic = time.clock()
+            Nrepeat = 3000
             for i in range(Nrepeat):
-                tic = time.clock()
-                cfinal = NISTfit.LevenbergMarquardt(eva, o)
-                toc = time.clock()
-                elap += toc-tic
+                cfinal = eva.evaluate_parallel(Nthreads)
+            toc = time.clock()
+            elap = toc-tic
             times.append(elap/Nrepeat)
-            print(cfinal)
         line, = plt.plot(range(1, len(times)+1),time_serial/np.array(times))
         if arg < 0:
             lbl = 'native'
@@ -110,8 +79,6 @@ def speedtest(get_eva, args, ofname):
     plt.show()
 
 if __name__=='__main__':
-    # speedtest(get_eval_poly, [100,10000],'speedup_polynomial.pdf')
+    speedtest(get_eval_poly, [100,10000],'speedup_polynomial.pdf')
     speedtest(get_eval_decaying_exponential, [-1,5,20], 
               'speedup_decaying_exponential.pdf')
-    # speedtest(get_eval_decaying_exponential_finite_diff, [1], 
-    #           'speedup_decaying_exponential_finite_diff.pdf')

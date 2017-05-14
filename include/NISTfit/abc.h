@@ -108,6 +108,11 @@ namespace NISTfit{
         *
         */
         void setup_threads(short Nthreads) {
+            // If you have requested a different number of threads than the threads 
+            // that are up, stop the current threads
+            if (Nthreads != thread_data.size()) {
+                kill_threads();
+            }
             if (thread_data.empty()) {
                 // auto startTime = std::chrono::system_clock::now();
 
@@ -148,6 +153,8 @@ namespace NISTfit{
             }
             // Join all the threads
             for (auto& td : thread_data) { td.t.join(); }
+            // Clear thread_data
+            thread_data.clear();
         };
         /// Add a single output to the list of outputs and connect pointer to AbstractEvaluator
         void add_output(const std::shared_ptr<AbstractOutput> &out) {
