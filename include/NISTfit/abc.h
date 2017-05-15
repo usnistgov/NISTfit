@@ -157,9 +157,9 @@ namespace NISTfit{
             thread_data.clear();
         };
         /// Add a single output to the list of outputs and connect pointer to AbstractEvaluator
-        void add_output(std::shared_ptr<AbstractOutput> out) {
+        void add_output(const std::shared_ptr<AbstractOutput> &out) {
             m_outputs.push_back(out);
-            m_outputs[m_outputs.size() - 1]->set_AbstractEvaluator(this);
+            m_outputs.back()->set_AbstractEvaluator(this);
         }
     public:
         virtual void set_coefficients(const std::vector<double> &) = 0;
@@ -167,7 +167,7 @@ namespace NISTfit{
         /// Get the size of the outputs
         std::size_t get_outputs_size() { return m_outputs.size(); };
         /// Add a vector of instances derived from AbstractOutput to this evaluator
-        void add_outputs(std::vector<std::shared_ptr<AbstractOutput> > &outputs) {
+        void add_outputs(const std::vector<std::shared_ptr<AbstractOutput> > &outputs) {
             for (auto &out : outputs) {
                 add_output(out);
             }
@@ -338,10 +338,46 @@ namespace NISTfit{
             NumericOutput(const std::shared_ptr<NumericInput> &in) : m_in(in) {};
             /// Move constructor
             NumericOutput(const std::shared_ptr<NumericInput> &&in) : m_in(in) {};
-            virtual double get_error(){ return m_y_calc - m_in->y(); };
-            std::vector<double> & get_Jacobian_row() { return Jacobian_row; }
+            virtual double get_error() override { return m_y_calc - m_in->y(); };
+            std::vector<double> & get_Jacobian_row() override { return Jacobian_row; }
+            std::shared_ptr<AbstractInput> get_input() override { return m_in; };
             void resize(std::size_t N){ Jacobian_row.resize(N); };
-            std::shared_ptr<AbstractInput> get_input(){ return m_in; };
+    };
+    
+    /// The data structure for an output for the single y output variable
+    class FiniteDiffOutput : public NumericOutput{
+        
+    protected:
+        std::function<double(const std::vector<double> &)> m_f;
+        std::vector<double> m_dc;
+    public:
+        /// Copy constructor w/ passed in model function
+        FiniteDiffOutput(const std::shared_ptr<NumericInput> &in,
+                         const std::function<double(const std::vector<double> &)> &f,
+                         const std::vector<double> &dc)
+            : NumericOutput(in), m_f(f), m_dc(dc) {
+                resize(dc.size());};
+        /// Move constructor w/ passed in model function
+        FiniteDiffOutput(const std::shared_ptr<NumericInput> &&in,
+                         const std::function<double(const std::vector<double> &)> &f,
+                         const std::vector<double> &dc)
+            : NumericOutput(in), m_f(f), m_dc(dc) {
+                resize(dc.size());};
+        virtual double call_func(const std::vector<double> &c){
+            return m_f(c);
+        }
+        /// Evaluate the function, and the Jacobian row by numerical differentiation
+        void evaluate_one() override{
+            // Do the calculation
+            const std::vector<double> &c = get_AbstractEvaluator().get_const_coefficients();
+            m_y_calc = call_func(c);
+            for (std::size_t i = 0; i < c.size(); ++i) {
+                std::vector<double> cp = c, cm = c;
+                cp[i] += m_dc[i]; cm[i] -= m_dc[i];
+                Jacobian_row[i] = (call_func(cp) - call_func(cm))/(2*m_dc[i]);
+            }
+        };
+        void exception_handler() override{ m_y_calc = 100000; }
     };
     
 }; /* namespace NISTfit */

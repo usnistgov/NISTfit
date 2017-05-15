@@ -98,6 +98,52 @@ double fit_polynomial(bool threading, std::size_t Nmax, short Nthreads)
     return std::chrono::duration<double>(endTime - startTime).count();
 }
 
+double fit_decaying_exponential_finite_diff(bool threading, std::size_t Nmax, short Nthreads, long N)
+{
+    double a = 0.2, b = 3, c = 1.3;
+    std::vector<std::shared_ptr<AbstractOutput> > outputs;
+    for (double i = 0; i < Nmax; ++i) {
+        double x = i / ((double)Nmax);
+        double y = exp(-a*x)*sin(b*x)*cos(c*x);
+        auto in = std::shared_ptr<NumericInput>(new NumericInput(x, y));
+        std::function<double(const std::vector<double> &)> f = [x](const std::vector<double> &c){ return exp(-c[0]*x)*sin(c[1]*x)*cos(c[2]*x); };
+        std::vector<double> dc(3,0.01); // Set of dci in the finite difference, where parameters are evaluated at c[i] + dc[i] and c[i] - dc[i]
+        outputs.push_back(std::shared_ptr<AbstractOutput>(new FiniteDiffOutput(in, f, dc)));
+    }
+    std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+    eval->add_outputs(outputs);
+    
+    std::vector<double> c0 = { 1, 1, 1 };
+    auto startTime = std::chrono::system_clock::now();
+    auto opts = LevenbergMarquardtOptions();
+    opts.c0 = c0; opts.threading = threading; opts.Nthreads = Nthreads;
+    auto cc = LevenbergMarquardt(eval, opts);
+    auto endTime = std::chrono::system_clock::now();
+    return std::chrono::duration<double>(endTime - startTime).count();
+}
+
+double fit_decaying_exponential(bool threading, std::size_t Nmax, short Nthreads, long N)
+{
+    double a = 0.2, b = 3, c = 1.3;
+    std::vector<std::shared_ptr<AbstractOutput> > outputs;
+    for (double i = 0; i < Nmax; ++i) {
+        double x = i / ((double)Nmax);
+        double y = exp(-a*x)*sin(b*x)*cos(c*x);
+        auto in = std::shared_ptr<NumericInput>(new NumericInput(x, y));
+        outputs.push_back(std::shared_ptr<AbstractOutput>(new DecayingExponentialOutput(N, in)));
+    }
+    std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+    eval->add_outputs(outputs);
+
+    std::vector<double> c0 = { 1, 1, 1 };
+    auto startTime = std::chrono::system_clock::now();
+    auto opts = LevenbergMarquardtOptions();
+    opts.c0 = c0; opts.threading = threading; opts.Nthreads = Nthreads;
+    auto cc = LevenbergMarquardt(eval, opts);
+    auto endTime = std::chrono::system_clock::now();
+    return std::chrono::duration<double>(endTime - startTime).count();
+}
+
 void speedtest_fit_polynomial(short Nthread_max)
 {
     std::cout << "XXXXXXXXXX POLYNOMIAL XXXXXXXXXX" << std::endl;
@@ -180,6 +226,19 @@ void speedtest_decaying_exponential(short Nthread_max)
         for (short Nthreads = 2; Nthreads <= Nthread_max; ++Nthreads) {
             const bool threading = true;
             auto time_parallel = fit_decaying_exponential(eval, threading, Nthreads);
+            printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), time_serial/time_parallel, time_serial, time_parallel);
+        }
+    }
+}
+
+void speedtest_decaying_exponential_finite_diff(short Nthread_max)
+{
+    std::cout << "XXXXXXXXXX DECAYING EXPONENTIAL with finite differences XXXXXXXXXX" << std::endl;
+    for (long N = 10; N <= 50; N += 20) {
+        auto time_serial = fit_decaying_exponential_finite_diff(false, 10000, 1, N);
+        for (short Nthreads = 2; Nthreads <= Nthread_max; ++Nthreads) {
+            const bool threading = true;
+            auto time_parallel = fit_decaying_exponential_finite_diff(threading, 10000, Nthreads, N);
             printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), time_serial/time_parallel, time_serial, time_parallel);
         }
     }
