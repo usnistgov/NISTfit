@@ -75,7 +75,7 @@ namespace NISTfit{
     {
     private:
         std::vector<std::shared_ptr<AbstractOutput> > m_outputs;
-        std::vector<int> m_affinity_scheme; ///< A vector of compressor indices that shall be used for each thread spun up
+        std::vector<int> m_affinity_scheme; ///< A vector of processor indices that shall be used for each thread spun up, 0-based
     protected:
         Eigen::MatrixXd J;
         Eigen::VectorXd r;
@@ -139,13 +139,11 @@ namespace NISTfit{
                     td.eval = this;
                     // Construct the thread that will actually do the evaluation
                     td.t = std::thread(&AbstractEvaluator::evaluate_threaded, this, &td);
-                    std::cout << "Loaded thread w/ index: " << i << "\n";
 #if defined(WIN32)
-                    // See http://stackoverflow.com/a/41574964/1360263
                     if (!m_affinity_scheme.empty() && i <= m_affinity_scheme.size()){
+                        // See http://stackoverflow.com/a/41574964/1360263
                         auto affinity_mask = (static_cast<DWORD_PTR>(1) << m_affinity_scheme[i]); //core number starts from 0
                         SetThreadAffinityMask(td.t.native_handle(), affinity_mask);
-                        printf("set affinity mask: %#x\n", static_cast<unsigned int>(affinity_mask));
                     }
 #endif
                 }
