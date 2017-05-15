@@ -9,6 +9,14 @@
 #include <numeric>      // std::accumulate
 #include <queue>
 
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#undef NOMINMAX
+#undef WIN32_LEAN_AND_MEAN
+#endif
+
 #include "Eigen/Dense"
 
 namespace NISTfit{
@@ -67,6 +75,7 @@ namespace NISTfit{
     {
     private:
         std::vector<std::shared_ptr<AbstractOutput> > m_outputs;
+        std::vector<int> m_affinity_scheme; ///< A vector of compressor indices that shall be used for each thread spun up
     protected:
         Eigen::MatrixXd J;
         Eigen::VectorXd r;
@@ -130,6 +139,15 @@ namespace NISTfit{
                     td.eval = this;
                     // Construct the thread that will actually do the evaluation
                     td.t = std::thread(&AbstractEvaluator::evaluate_threaded, this, &td);
+                    std::cout << "Loaded thread w/ index: " << i << "\n";
+#if defined(WIN32)
+                    // See http://stackoverflow.com/a/41574964/1360263
+                    if (!m_affinity_scheme.empty() && i <= m_affinity_scheme.size()){
+                        auto affinity_mask = (static_cast<DWORD_PTR>(1) << m_affinity_scheme[i]); //core number starts from 0
+                        SetThreadAffinityMask(td.t.native_handle(), affinity_mask);
+                        printf("set affinity mask: %#x\n", static_cast<unsigned int>(affinity_mask));
+                    }
+#endif
                 }
                 // auto endTime = std::chrono::system_clock::now();
                 // double thread_setup_elap = std::chrono::duration<double>(endTime - startTime).count();
@@ -306,6 +324,17 @@ namespace NISTfit{
             }
             return r;
         }
+        /**
+         * @brief Set affinity scheme that is to be used to determine which thread is connected to which processor
+         * 
+         * The indices in the vector are the indices for the first, second, third, etc. thread, 0-based.  For instance if you want 
+         * the affinity to go as the first thread on core 1, the first core on thread 2, etc., you might have: [0,2,4,6,1,3,5,7]
+         */
+        void set_affinity_scheme(const std::vector<int> &affinity_scheme){ m_affinity_scheme = affinity_scheme; };
+        /** 
+         * @brief Get the affinity scheme that is in use
+         */
+        const std::vector<int> & get_affinity_scheme() { return m_affinity_scheme; };
     };
 
     /// The data inputs

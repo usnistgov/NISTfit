@@ -97,6 +97,8 @@ void init_fitter(py::module &m){
         .def("get_outputs_size", &AbstractEvaluator::get_outputs_size)
         .def("add_outputs", &AbstractEvaluator::add_outputs)
         .def("get_error_vector", &AbstractEvaluator::get_error_vector, py::return_value_policy::copy)
+        .def("get_affinity_scheme", &AbstractEvaluator::get_affinity_scheme)
+        .def("set_affinity_scheme", &AbstractEvaluator::set_affinity_scheme)
         ;
 
     py::class_<NumericEvaluator, AbstractEvaluator, std::shared_ptr<NumericEvaluator> >(m, "NumericEvaluator")
