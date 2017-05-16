@@ -2,7 +2,7 @@ import NISTfit
 import numpy as np
 import timeit
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 import functools
 

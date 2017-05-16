@@ -1,7 +1,7 @@
 import NISTfit
 import numpy as np, timeit
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 
 def get_eval_poly(Npoints):
