@@ -1,6 +1,8 @@
 import NISTfit
 import numpy as np
-import time
+import timeit
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import functools
 
@@ -16,7 +18,7 @@ def get_eval_poly(Npoints):
 
 def get_eval_decaying_exponential(Norder):
     a = 0.2; b = 3; c = 1.3;
-    x = np.linspace(0, 2, 1000)
+    x = np.linspace(0, 2, 1200)
     y = np.exp(-a*x)*np.sin(b*x)*np.cos(c*x)
     outputs = [NISTfit.DecayingExponentialOutput(Norder, NISTfit.NumericInput(_x, _y)) 
                for _x,_y in zip(x, y)]
@@ -57,61 +59,73 @@ def speedtest(get_eva, args, ofname):
     o = NISTfit.LevenbergMarquardtOptions()
     o.tau0 = 1
 
-    fig, ax = plt.subplots(1,1,figsize=(4,3))
+    fig, ax1 = plt.subplots(1,1,figsize=(4,3))
+    fig2, ax2 = plt.subplots(1,1,figsize=(4,3))
     
-    for arg in args: # order of Taylor series expansion
-        
-        # Serial evaluation
-        eva, o.c0 = get_eva(arg)
-        Nserial = 1
-        elap = 0
-        for i in range(Nserial):
-            tic = time.clock()
-            o.threading = False
-            cfinal = NISTfit.LevenbergMarquardt(eva, o)
-            toc = time.clock()
-            elap += toc-tic
-        time_serial = elap/Nserial
-
-        # Parallel evaluation
-        o.threading = True
-        times = []
-        for Nthreads in [1,2,3,4,5,6,7,8]:
-            NISTfit.Eigen_setNbThreads(Nthreads)
+    for arg,c in zip(args,['b','r','c']):
+        for affinity, dashes in [(True,()),(False,[2,2])]:
+            print(arg,affinity)
+            # Serial evaluation
             eva, o.c0 = get_eva(arg)
-            o.Nthreads = Nthreads
+            Nrepeat = 20
             elap = 0
-            Nrepeat = 30
+            tic = timeit.default_timer()
+            o.threading = False
             for i in range(Nrepeat):
-                tic = time.clock()
                 cfinal = NISTfit.LevenbergMarquardt(eva, o)
-                toc = time.clock()
-                elap += toc-tic
-            times.append(elap/Nrepeat)
-            print(cfinal)
-        line, = plt.plot(range(1, len(times)+1),time_serial/np.array(times))
-        if arg < 0:
-            lbl = 'native'
-        else:
-            lbl = 'N: '+str(arg)
-        plt.text(len(times)-0.5, (time_serial/np.array(times))[-1], lbl, 
-                 ha='right', va='center',
-                 color=line.get_color(),
-                 bbox = dict(facecolor='w',
-                             edgecolor=line.get_color(),
-                             boxstyle='round')
-                 )
+            elap = timeit.default_timer() - tic
+            time_serial = elap/Nrepeat
 
-    plt.plot([1,8],[1,8],'k',lw=3,label='linear speedup')
-    plt.xlabel(r'$N_{\rm threads}$ (-)')
-    plt.ylabel(r'Speedup $t_{\rm serial}/t_{\rm parallel}$ (-)')
-    plt.tight_layout(pad=0.3)
-    plt.savefig(ofname)
-    plt.show()
+            # Parallel evaluation
+            o.threading = True
+            times = []
+            for Nthreads in [1,2,3,4,5,6,7,8]:
+                NISTfit.Eigen_setNbThreads(Nthreads)
+                eva, o.c0 = get_eva(arg)
+                o.Nthreads = Nthreads
+                elap = 0
+                tic = timeit.default_timer()
+                for i in range(Nrepeat):
+                    cfinal = NISTfit.LevenbergMarquardt(eva, o)
+                elap = timeit.default_timer() - tic
+                times.append(elap/Nrepeat)
+            
+            ax1.plot(range(1, len(times)+1),time_serial/np.array(times), color = c, dashes = dashes)
+            if arg < 0:
+                lbl = 'native'
+            else:
+                lbl = 'N: '+str(arg)
+            ax2.plot(range(1, len(times)+1), np.array(times)/times[0], color = c, dashes = dashes, label = lbl)
+            if affinity:
+                ax1.text(len(times)-0.25, (time_serial/np.array(times))[-1], lbl, 
+                     ha='right', va='center',
+                     color=c,
+                     bbox = dict(facecolor='w',
+                                 edgecolor=c,
+                                 boxstyle='round')
+                     )
+
+    ax1.plot([2,2.9],[7,7],lw=1,color='grey')
+    ax1.plot([2,2.9],[6,6],lw=1,color='grey',dashes = [2,2])
+    ax1.text(3,7,'Affinity',ha='left',va='center')
+    ax1.text(3,6,'No affinity',ha='left',va='center')
+    ax1.plot([1,8],[1,8],'k',lw=3,label='linear speedup')
+    ax1.set_xlabel(r'$N_{\rm threads}$ (-)')
+    ax1.set_ylabel(r'Speedup $t_{\rm serial}/t_{\rm parallel}$ (-)')
+    fig.tight_layout(pad=0.3)
+    fig.savefig(ofname)
+
+    ax2.set_xlabel(r'$N_{\rm threads}$ (-)')
+    ax2.set_ylabel(r'Speedup $t_{\rm serial}/t_{\rm parallel}$ (-)')
+    ax2.legend(loc='best',ncol=2)
+    fig2.tight_layout(pad=0.3)
+    fig2.savefig('total')
+
+    plt.close('all')
 
 if __name__=='__main__':
-    # speedtest(get_eval_poly, [100,10000],'speedup_polynomial.pdf')
-    speedtest(get_eval_decaying_exponential, [-1,5,20], 
-              'speedup_decaying_exponential.pdf')
+    speedtest(get_eval_poly, [120,12000],'LM_speedup_polynomial.pdf')
+    speedtest(get_eval_decaying_exponential, [50,5,-1], 
+              'LM_speedup_decaying_exponential.pdf')
     # speedtest(get_eval_decaying_exponential_finite_diff, [1], 
-    #           'speedup_decaying_exponential_finite_diff.pdf')
+    #           'LM_speedup_decaying_exponential_finite_diff.pdf')
