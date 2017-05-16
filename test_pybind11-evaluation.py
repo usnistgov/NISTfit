@@ -96,7 +96,7 @@ def speedtest(get_eva, args, ofname):
     NN = np.linspace(1,8)
     ax2.plot(NN,1/NN,'k',lw=3,label='linear speedup')
     ax2.set_xlabel(r'$N_{\rm threads}$ (-)')
-    ax2.set_ylabel(r'Total time $t_{\rm parallel}/t_{1thread}$ (-)')
+    ax2.set_ylabel(r'Total time $t_{\rm parallel}/t_{\rm 1 thread}$ (-)')
     ax2.legend(loc='best',ncol=2)
     fig2.tight_layout(pad=0.3)
     fig2.savefig('abs-'+ofname)

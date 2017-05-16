@@ -67,7 +67,7 @@ def speedtest(get_eva, args, ofname):
             print(arg,affinity)
             # Serial evaluation
             eva, o.c0 = get_eva(arg)
-            Nrepeat = 20
+            Nrepeat = 40
             elap = 0
             tic = timeit.default_timer()
             o.threading = False
@@ -115,11 +115,13 @@ def speedtest(get_eva, args, ofname):
     fig.tight_layout(pad=0.3)
     fig.savefig(ofname)
 
+    NN = np.linspace(1,8)
+    ax2.plot(NN,1/NN,'k',lw=3,label='linear speedup')
     ax2.set_xlabel(r'$N_{\rm threads}$ (-)')
-    ax2.set_ylabel(r'Speedup $t_{\rm serial}/t_{\rm parallel}$ (-)')
+    ax2.set_ylabel(r'Total time $t_{\rm parallel}/t_{\rm 1 thread}$ (-)')
     ax2.legend(loc='best',ncol=2)
     fig2.tight_layout(pad=0.3)
-    fig2.savefig('total')
+    fig2.savefig('abs-'+ofname)
 
     plt.close('all')
 
