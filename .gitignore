@@ -2,3 +2,5 @@
 /build
 /examples/*.TMP
 /include/NISTfit/*.TMP
+/NISTfit.egg-info
+/dist
