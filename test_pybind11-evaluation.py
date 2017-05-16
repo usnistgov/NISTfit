@@ -24,16 +24,21 @@ def get_eval_decaying_exponential(Norder):
     eva.add_outputs(outputs)
     return eva, [0.5, 2, 0.8]
 
-def speedtest(get_eva, args, ofname):
+def speedtest(get_eva, args, ofname, affinity = False):
 
     o = NISTfit.LevenbergMarquardtOptions()
     o.tau0 = 1
 
     fig1, ax1 = plt.subplots(1,1,figsize=(4,3))
     fig2, ax2 = plt.subplots(1,1,figsize=(4,3))
+
+    if affinity:
+        affinity_options = [(True,()),(False,[2,2])]
+    else:
+        affinity_options = [(False,())]
     
     for arg,c in zip(args,['b','r','c']):
-        for affinity, dashes in [(True,()),(False,[2,2])]:
+        for affinity, dashes in affinity_options:
             print(arg,affinity)
             # Serial evaluation
             eva, o.c0 = get_eva(arg)
@@ -74,7 +79,7 @@ def speedtest(get_eva, args, ofname):
                 lbl = 'N: '+str(arg)
 
             ax2.plot(range(1, len(times)+1),np.array(times)/times[0],label = lbl,color=c,dashes=dashes)
-            if affinity:
+            if affinity or len(affinity_options) == 1:
                 ax1.text(len(times)-0.25, (time_serial/np.array(times))[-1], lbl, 
                          ha='right', va='center',
                          color=c,
@@ -83,10 +88,11 @@ def speedtest(get_eva, args, ofname):
                                      boxstyle='round')
                          )
 
-    ax1.plot([2,2.9],[7,7],lw=1,color='grey')
-    ax1.plot([2,2.9],[6,6],lw=1,color='grey',dashes = [2,2])
-    ax1.text(3,7,'Affinity',ha='left',va='center')
-    ax1.text(3,6,'No affinity',ha='left',va='center')
+    if affinity or len(affinity_options) > 1:
+        ax1.plot([2,2.9],[7,7],lw=1,color='grey')
+        ax1.plot([2,2.9],[6,6],lw=1,color='grey',dashes = [2,2])
+        ax1.text(3,7,'Affinity',ha='left',va='center')
+        ax1.text(3,6,'No affinity',ha='left',va='center')
     ax1.plot([1,8],[1,8],'k',lw=3,label='linear speedup')
     ax1.set_xlabel(r'$N_{\rm threads}$ (-)')
     ax1.set_ylabel(r'Speedup $t_{\rm serial}/t_{\rm parallel}$ (-)')
