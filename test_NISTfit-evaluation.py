@@ -32,6 +32,7 @@ def speedtest(get_eva, args, ofname, Nthreads_max = 8, affinity = False):
     for arg,c in zip(args,['b','r','c']):
         for affinity, dashes in affinity_options:
             print(arg,affinity)
+            
             # Serial evaluation
             eva, o.c0 = get_eva(arg)
             if affinity:
@@ -112,9 +113,11 @@ def speedtest(get_eva, args, ofname, Nthreads_max = 8, affinity = False):
     plt.close('all')
 
 if __name__=='__main__':
+    # Allow for the number of threads to be provided at the command line as the argument to this script
     Nthreads_max = 8
     if len(sys.argv) == 3:
         Nthreads_max = float(sys.argv[-1])
-    speedtest(evaluators.get_eval_poly, [120,12000],'speedup_polynomial.pdf')
+    
+	speedtest(evaluators.get_eval_poly, [120,12000],'speedup_polynomial.pdf')
     speedtest(evaluators.get_eval_decaying_exponential, [50,5,-1], 
               'speedup_decaying_exponential.pdf')

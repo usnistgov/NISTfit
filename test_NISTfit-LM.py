@@ -44,7 +44,8 @@ def speedtest(get_eva, args, ofname, affinity = False):
             # Parallel evaluation
             o.threading = True
             times = []
-            for Nthreads in [1,2,3,4,5,6,7,8]:
+            Nthreads_list = range(1, Nthreads_max+1)
+            for Nthreads in Nthreads_list:
                 NISTfit.Eigen_setNbThreads(Nthreads)
                 eva, o.c0 = get_eva(arg)
                 o.Nthreads = Nthreads
@@ -55,12 +56,14 @@ def speedtest(get_eva, args, ofname, affinity = False):
                 elap = timeit.default_timer() - tic
                 times.append(elap/Nrepeat)
             
-            ax1.plot(range(1, len(times)+1),time_serial/np.array(times), color = c, dashes = dashes)
+            ax1.plot(Nthreads_list,time_serial/np.array(times), 
+                     color = c, dashes = dashes)
             if arg < 0:
                 lbl = 'native'
             else:
                 lbl = 'N: '+str(arg)
-            ax2.plot(range(1, len(times)+1), np.array(times)/times[0], color = c, dashes = dashes, label = lbl)
+            ax2.plot(Nthreads_list, np.array(times)/times[0], color = c, 
+                     dashes = dashes, label = lbl)
             if affinity or len(affinity_options) == 1:
                 ax1.text(len(times)-0.25, (time_serial/np.array(times))[-1], lbl, 
                      ha='right', va='center',
@@ -92,6 +95,11 @@ def speedtest(get_eva, args, ofname, affinity = False):
     plt.close('all')
 
 if __name__=='__main__':
+	# Allow for the number of threads to be provided at the command line as the argument to this script
+    Nthreads_max = 8
+    if len(sys.argv) == 3:
+        Nthreads_max = float(sys.argv[-1])
+
     speedtest(evaluators.get_eval_poly, [120,12000],'LM_speedup_polynomial.pdf')
     speedtest(evaluators.get_eval_decaying_exponential, [50,5,-1], 
               'LM_speedup_decaying_exponential.pdf')
