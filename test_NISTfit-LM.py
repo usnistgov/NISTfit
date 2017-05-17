@@ -97,7 +97,7 @@ def speedtest(get_eva, args, ofname, affinity = False):
 if __name__=='__main__':
 	# Allow for the number of threads to be provided at the command line as the argument to this script
     Nthreads_max = 8
-    if len(sys.argv) == 3:
+    if len(sys.argv) == 2:
         Nthreads_max = float(sys.argv[-1])
 
     speedtest(evaluators.get_eval_poly, [120,12000],'LM_speedup_polynomial.pdf')
