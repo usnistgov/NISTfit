@@ -1,30 +1,20 @@
-import NISTfit
-import numpy as np, timeit
+from __future__ import division, print_function
+
+import json
+import sys
+import timeit
+
+import numpy as np
+
 import matplotlib
-matplotlib.use('PDF')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-def get_eval_poly(Npoints):
-    x = np.linspace(0,1,Npoints)
-    y = 1 + 2*x + 3*x**2 + 4*x**6
-    order = 6
-    outputs = [NISTfit.PolynomialOutput(order, NISTfit.NumericInput(_x, _y)) 
-               for _x,_y in zip(x, y)]
-    eva = NISTfit.NumericEvaluator()
-    eva.add_outputs(outputs)
-    return eva, [1.5]*(order+1)
+# Common module with the generators
+import evaluators
+import NISTfit
 
-def get_eval_decaying_exponential(Norder):
-    a = 0.2; b = 3; c = 1.3;
-    x = np.linspace(0, 2, 1200)
-    y = np.exp(-a*x)*np.sin(b*x)*np.cos(c*x)
-    outputs = [NISTfit.DecayingExponentialOutput(Norder, NISTfit.NumericInput(_x, _y)) 
-               for _x,_y in zip(x, y)]
-    eva = NISTfit.NumericEvaluator()
-    eva.add_outputs(outputs)
-    return eva, [0.5, 2, 0.8]
-
-def speedtest(get_eva, args, ofname, affinity = False):
+def speedtest(get_eva, args, ofname, Nthreads_max = 8, affinity = False):
 
     o = NISTfit.LevenbergMarquardtOptions()
     o.tau0 = 1
@@ -36,6 +26,8 @@ def speedtest(get_eva, args, ofname, affinity = False):
         affinity_options = [(True,()),(False,[2,2])]
     else:
         affinity_options = [(False,())]
+
+    data = {'filename': ofname, 'times':[]}
     
     for arg,c in zip(args,['b','r','c']):
         for affinity, dashes in affinity_options:
@@ -53,11 +45,13 @@ def speedtest(get_eva, args, ofname, affinity = False):
             toc = timeit.default_timer()
             elap = toc-tic
             time_serial = elap/Nrepeats
+            data['times'].append((arg, 'serial', time_serial))
 
             # Parallel evaluation
             o.threading = True
             times = []
-            for Nthreads in [1,2,3,4,5,6,7,8]:
+            Nthreads_list = range(1, Nthreads_max+1)
+            for Nthreads in Nthreads_list:
                 #NISTfit.Eigen_setNbThreads(Nthreads)
                 eva, o.c0 = get_eva(arg)
                 if affinity:
@@ -71,14 +65,19 @@ def speedtest(get_eva, args, ofname, affinity = False):
                 toc = timeit.default_timer()
                 elap = toc-tic
                 times.append(elap/Nrepeats)
+                data['times'].append(dict(arg=arg, type='parallel', 
+                                          Nthreads=Nthreads, time=elap/Nrepeats,
+                                          affinity=affinity))
             
-            line, = ax1.plot(range(1, len(times)+1),time_serial/np.array(times),color=c,dashes=dashes)
+            line, = ax1.plot(Nthreads_list,time_serial/np.array(times),
+                             color=c,dashes=dashes)
             if arg < 0:
                 lbl = 'native'
             else:
                 lbl = 'N: '+str(arg)
 
-            ax2.plot(range(1, len(times)+1),np.array(times)/times[0],label = lbl,color=c,dashes=dashes)
+            ax2.plot(Nthreads_list, np.array(times)/times[0],label = lbl,
+                     color=c,dashes=dashes)
             if affinity or len(affinity_options) == 1:
                 ax1.text(len(times)-0.25, (time_serial/np.array(times))[-1], lbl, 
                          ha='right', va='center',
@@ -87,6 +86,9 @@ def speedtest(get_eva, args, ofname, affinity = False):
                                      edgecolor=line.get_color(),
                                      boxstyle='round')
                          )
+
+    with open('dump'+ofname+'.json','w') as fp:
+        fp.write(json.dumps(data, indent =2))
 
     if affinity or len(affinity_options) > 1:
         ax1.plot([2,2.9],[7,7],lw=1,color='grey')
@@ -110,5 +112,9 @@ def speedtest(get_eva, args, ofname, affinity = False):
     plt.close('all')
 
 if __name__=='__main__':
-    speedtest(get_eval_poly, [120,12000],'speedup_polynomial.pdf')
-    speedtest(get_eval_decaying_exponential, [50,5,-1], 'speedup_decaying_exponential.pdf')
+    Nthreads_max = 8
+    if len(sys.argv) == 3:
+        Nthreads_max = float(sys.argv[-1])
+    speedtest(evaluators.get_eval_poly, [120,12000],'speedup_polynomial.pdf')
+    speedtest(evaluators.get_eval_decaying_exponential, [50,5,-1], 
+              'speedup_decaying_exponential.pdf')
