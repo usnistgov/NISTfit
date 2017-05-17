@@ -95,13 +95,15 @@ def speedtest(get_eva, args, ofname, affinity = False):
     plt.close('all')
 
 if __name__=='__main__':
-	# Allow for the number of threads to be provided at the command line as the argument to this script
+    # Allow for the number of threads to be provided at the command line as the argument to this script
     Nthreads_max = 8
     if len(sys.argv) == 2:
         Nthreads_max = int(sys.argv[-1])
 
-    speedtest(evaluators.get_eval_poly, [120,12000],'LM_speedup_polynomial.pdf')
+    speedtest(evaluators.get_eval_poly, [120,12000],'LM_speedup_polynomial.pdf',
+              Nthreads_max = Nthreads_max)
     speedtest(evaluators.get_eval_decaying_exponential, [50,5,-1], 
-              'LM_speedup_decaying_exponential.pdf')
+              'LM_speedup_decaying_exponential.pdf',
+              Nthreads_max = Nthreads_max)
     # speedtest(get_eval_decaying_exponential_finite_diff, [1], 
     #           'LM_speedup_decaying_exponential_finite_diff.pdf')
