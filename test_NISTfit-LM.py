@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import evaluators
 import NISTfit
 
-def speedtest(get_eva, args, ofname, affinity = False):
+def speedtest(get_eva, args, ofname, Nthreads_max = 8, affinity = False):
 
     o = NISTfit.LevenbergMarquardtOptions()
     o.tau0 = 1
