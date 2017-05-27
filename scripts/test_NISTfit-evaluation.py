@@ -96,7 +96,7 @@ def speedtest(get_eva, args, ofname, Nthreads_max = 8, affinity = False):
         ax1.plot([2,2.9],[6,6],lw=1,color='grey',dashes = [2,2])
         ax1.text(3,7,'Affinity',ha='left',va='center')
         ax1.text(3,6,'No affinity',ha='left',va='center')
-    ax1.plot([1,8],[1,8],'k',lw=3,label='linear speedup')
+    ax1.plot([1,Nthreads_max],[1,Nthreads_max],'k',lw=3,label='linear speedup')
     ax1.set_xlabel(r'$N_{\rm threads}$ (-)')
     ax1.set_ylabel(r'Speedup $t_{\rm serial}/t_{\rm parallel}$ (-)')
     fig1.tight_layout(pad=0.3)
