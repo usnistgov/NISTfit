@@ -15,13 +15,22 @@ if (${CMAKE_GENERATOR} MATCHES  "Unix Makefile")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -fPIC")
 endif()
 
-# Check for the existence of OpenMP and enable it as needed
-# see also http://stackoverflow.com/a/12404666/1360263
-find_package(OpenMP)
-if (OPENMP_FOUND)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-endif()
+macro(add_nix_libraries target)
+    # Add DL and pthreads
+    FIND_PACKAGE ( Threads REQUIRED )
+    target_link_libraries (${target} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+endmacro()
+
+macro(add_libraries target)
+    # Check for the existence of OpenMP and enable it as needed; see also http://stackoverflow.com/a/12404666/1360263
+    find_package(OpenMP)
+    if (OPENMP_FOUND)
+        target_compile_options(${target} PUBLIC ${OpenMP_CXX_FLAGS})
+    endif()
+    if (UNIX)
+        add_nix_libraries(${target})
+    endif()
+endmacro()    
 
 if (NISTFIT_EXAMPLES)
     # Add Eigen include here since we are going to use our version of Eigen
@@ -31,10 +40,12 @@ if (NISTFIT_EXAMPLES)
         message(STATUS "Set the number of threads")
         add_definitions(-DNTHREAD_MAX=${NISTFIT_NTHREAD_MAX})
     endif()
+    add_libraries(simple)
 elseif (NISTFIT_STATIC_LIBRARY)
     add_library(NISTfit STATIC ${APP_SOURCES})
     # Add target include directories for easy linking with other applications
     target_include_directories(NISTfit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    add_libraries(NISTfit)
 elseif (NISTFIT_PYBIND11)
     # ----------------------------
     # Build pybind11 python module
@@ -45,6 +56,8 @@ elseif (NISTFIT_PYBIND11)
     add_subdirectory("${CMAKE_SOURCE_DIR}/externals/pybind11")
     add_definitions(-DPYBIND11)
     pybind11_add_module(NISTfit ${APP_SOURCES} "${CMAKE_SOURCE_DIR}/src/pybind11_interface.cxx")
+    add_libraries(NISTfit)
 else()
     message(FATAL_ERROR "You must select a build option")
 endif()
+
