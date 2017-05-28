@@ -10,11 +10,6 @@ file(GLOB_RECURSE APP_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 # All global includes shall reside in the include directory
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-# Munge the arguments for g++ (might not be the best way, but seems to work)
-if (${CMAKE_GENERATOR} MATCHES  "Unix Makefile")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -fPIC")
-endif()
-
 macro(add_nix_libraries target)
     # Add DL and pthreads
     FIND_PACKAGE ( Threads REQUIRED )
@@ -26,6 +21,7 @@ macro(add_libraries target)
     find_package(OpenMP)
     if (OPENMP_FOUND)
         target_compile_options(${target} PUBLIC ${OpenMP_CXX_FLAGS})
+        set_property(TARGET ${target} APPEND PROPERTY LINK_FLAGS ${OpenMP_CXX_FLAGS})
     endif()
     if (UNIX)
         add_nix_libraries(${target})
