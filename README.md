@@ -11,6 +11,30 @@ A heavily abstracted C++-based kernel for fitting correlations
 ## Information
 
   - Please direct any questions to Ian Bell (ian.bell@nist.gov)
+
+## Usage
+
+    python wrapper can be built and installed with:
+
+    ```
+    python setup.py install
+    ``` 
+    
+    Requirements:
+    * Cmake
+    * C++11 compliant compiler (MSVC 2015+ on windows, most recent versions of g++ or clang will work fine)
+    * python (anaconda package is one good option, also includes plotting libraries (matplotlib) needed to run the timing tests)
+    
+    **Notes**: to specify that you want the Intel compiler, (on linux) you can do:
+
+    ```
+    CXX=icc python setup.py install
+    ```
+    
+    Alternatively, you can checkout and install in one fell swoop with:
+    ```
+    pip install git+git://github.com/usnistgov/NISTfit.git
+    ```
   
 ## License
 
