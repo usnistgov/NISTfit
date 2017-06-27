@@ -39,6 +39,7 @@ if (NISTFIT_EXAMPLES)
     add_libraries(simple)
 elseif (NISTFIT_STATIC_LIBRARY)
     add_library(NISTfit STATIC ${APP_SOURCES})
+    target_include_directories(NISTfit PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/externals/Eigen")
     # Add target include directories for easy linking with other applications
     target_include_directories(NISTfit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
     add_libraries(NISTfit)
