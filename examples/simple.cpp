@@ -186,7 +186,7 @@ void speedtest_decaying_exponential(short Nthread_max)
         return eval;
     };
     auto eval_decaying_exponential = [](std::shared_ptr<AbstractEvaluator> &eval, short Nrepeats,  bool threading, short Nthreads = 1){
-        auto startTime = std::chrono::system_clock::now();
+        auto startTime = std::chrono::high_resolution_clock::now();
         eval->set_coefficients({1,1,1});
         for (auto i = 0; i < Nrepeats; ++i){
             if (!threading){
@@ -196,16 +196,16 @@ void speedtest_decaying_exponential(short Nthread_max)
                 eval->evaluate_parallel(Nthreads);
             }
         }
-        auto endTime = std::chrono::system_clock::now();
+        auto endTime = std::chrono::high_resolution_clock::now();
         return std::chrono::duration<double>(endTime - startTime).count();
     };
     auto fit_decaying_exponential = [](std::shared_ptr<AbstractEvaluator> &eval, bool threading, short Nthreads = 1){
         std::vector<double> c0 = { 1, 1, 1 };
-        auto startTime = std::chrono::system_clock::now();
+        auto startTime = std::chrono::high_resolution_clock::now();
         auto opts = LevenbergMarquardtOptions();
         opts.c0 = c0; opts.threading = threading; opts.Nthreads = Nthreads;
         auto cc = LevenbergMarquardt(eval, opts);
-        auto endTime = std::chrono::system_clock::now();
+        auto endTime = std::chrono::high_resolution_clock::now();
         return std::chrono::duration<double>(endTime - startTime).count();
     };
     std::cout << "XXXXXXXXXX Evaluate DECAYING EXPONENTIAL with N-term expansions XXXXXXXXXX" << std::endl;
@@ -250,6 +250,7 @@ int main(){
     Nthread_max = NTHREAD_MAX;
 #endif
     std::cout << "Max # of threads: " << Nthread_max << std::endl;
+    std::cout << "std::thread::hardware_concurrency(): " << std::thread::hardware_concurrency() << std::endl;
     speedtest_decaying_exponential(Nthread_max);
     //speedtest_fit_polynomial(Nthread_max);
    // speedtest_fit_water_ancillary(Nthread_max);
