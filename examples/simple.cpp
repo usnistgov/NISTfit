@@ -186,9 +186,11 @@ void speedtest_decaying_exponential(short Nthread_max)
         return eval;
     };
     auto eval_decaying_exponential = [](std::shared_ptr<AbstractEvaluator> &eval, short Nrepeats,  bool threading, short Nthreads = 1){
-        auto startTime = std::chrono::high_resolution_clock::now();
         eval->set_coefficients({1,1,1});
+        eval->evaluate_parallel(Nthreads); // Force pool population
+        auto startTime = std::chrono::high_resolution_clock::now();
         for (auto i = 0; i < Nrepeats; ++i){
+            eval->set_coefficients({1,1+i/10000000.0,1});
             if (!threading){
                 eval->evaluate_serial(0, eval->get_outputs_size(), 0);
             }
@@ -211,9 +213,9 @@ void speedtest_decaying_exponential(short Nthread_max)
     std::cout << "XXXXXXXXXX Evaluate DECAYING EXPONENTIAL with N-term expansions XXXXXXXXXX" << std::endl;
     for (long N = 10; N <= 300; N += 20) {
         long Nrepeats = 1;
-        auto eval = build_eval(10000/*Nmax*/, N);
+        auto eval = build_eval(32000/*Nmax*/, N);
         auto time_serial = eval_decaying_exponential(eval, Nrepeats, false, 1);
-        for (short Nthreads = 2; Nthreads <= Nthread_max; ++Nthreads) {
+        for (short Nthreads = 1; Nthreads <= Nthread_max; ++Nthreads) {
             const bool threading = true;
             auto time_parallel = eval_decaying_exponential(eval, Nrepeats, threading, Nthreads);
             printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), time_serial / time_parallel, time_serial, time_parallel);

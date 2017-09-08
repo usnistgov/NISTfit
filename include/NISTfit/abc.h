@@ -56,22 +56,6 @@ namespace NISTfit{
         virtual void set_AbstractEvaluator(AbstractEvaluator *evaluator) { m_evaluator = evaluator; }
     };
 
-    // Convenience type definition
-    using job = std::packaged_task<void(ThreadData *)>;
-
-    // Some data associated to each thread.
-    struct ThreadData
-    {
-        int id; // Could use thread::id, but this is filled before the thread is started
-        std::thread t; // The thread object
-        std::queue<job> jobs; // The job queue
-        std::condition_variable cv; // The condition variable to wait for threads
-        std::mutex m; // Mutex used for avoiding data races
-        AbstractEvaluator *eval; // Evaluator
-        std::size_t iStart, iEnd; 
-        bool stop = false; // When set, this flag tells the thread that it should exit
-    };
-
     /// The abstract base class for the evaluator
     class AbstractEvaluator
     {
@@ -82,36 +66,30 @@ namespace NISTfit{
     protected:
         Eigen::MatrixXd J;
         Eigen::VectorXd r;
-        std::vector<ThreadData> thread_data; ///< The thread data for the threads
-        std::vector<std::future<void>> futures;
-        bool quit; 
-        std::mutex quit_mutex;
 
         /**
         * @brief Setup the threads that will be used to do the evaluations
         *
         */
         void setup_threads(short Nthreads) {
-            // If you have requested a different number of threads than the threads 
-            // that are up, stop the current threads
-            if (m_pool && Nthreads != m_pool->get_threads().size()) {
-                kill_threads();
-            }
-            // Make a thread pool for the workers
-            m_pool = std::unique_ptr<ThreadPool>(new ThreadPool(Nthreads));
-
-            // Set the thread affinity if desired
+            
+            if (!m_pool || Nthreads != m_pool->get_threads().size()){
+                // Make a thread pool for the workers
+                m_pool = std::unique_ptr<ThreadPool>(new ThreadPool(Nthreads));
+      
+                // Set the thread affinity if desired
 #if defined(WIN32)
-            auto &threads = m_pool->get_threads();
-            for (long i = 0; i < Nthreads; ++i) {
-                std::thread &td = threads[i];
-                if (!m_affinity_scheme.empty() && i <= m_affinity_scheme.size()) {
-                    // See http://stackoverflow.com/a/41574964/1360263
-                    auto affinity_mask = (static_cast<DWORD_PTR>(1) << m_affinity_scheme[i]); //core number starts from 0
-                    SetThreadAffinityMask(td.native_handle(), affinity_mask);
+                auto &threads = m_pool->get_threads();
+                for (long i = 0; i < Nthreads; ++i) {
+                    std::thread &td = threads[i];
+                    if (!m_affinity_scheme.empty() && i <= m_affinity_scheme.size()) {
+                        // See http://stackoverflow.com/a/41574964/1360263
+                        auto affinity_mask = (static_cast<DWORD_PTR>(1) << m_affinity_scheme[i]); //core number starts from 0
+                        SetThreadAffinityMask(td.native_handle(), affinity_mask);
+                    }
                 }
-            }
 #endif
+            }
         };
         /**
         * @brief Kill the threads that have been spun up to do the evaluations
@@ -142,13 +120,11 @@ namespace NISTfit{
         std::vector<std::shared_ptr<AbstractOutput> > & get_outputs() { return m_outputs; };
         /// Destructor
         ~AbstractEvaluator() {
-            if (!thread_data.empty()) {
-                // auto startTime = std::chrono::system_clock::now();
-                kill_threads();
-                // auto endTime = std::chrono::system_clock::now();
-                // double thread_kill_elap = std::chrono::duration<double>(endTime - startTime).count();
-                //std::cout << "thread teardown:" << thread_kill_elap << " s\n";
-            }
+            // auto startTime = std::chrono::system_clock::now();
+            kill_threads();
+            // auto endTime = std::chrono::system_clock::now();
+            // double thread_kill_elap = std::chrono::duration<double>(endTime - startTime).count();
+            //std::cout << "thread teardown:" << thread_kill_elap << " s\n";
         }
 
         /** 
@@ -180,31 +156,33 @@ namespace NISTfit{
         void evaluate_parallel(short Nthreads){
             
             // Set up threads but put them in holding pattern
-            //  no-op if threads are already initialized
+            // no-op if threads are already initialized
             setup_threads(Nthreads);
-
+            
             std::size_t Nmax = m_outputs.size();
             std::size_t Lchunk = Nmax / Nthreads;
 
             auto &threads = m_pool->get_threads();
-            for (auto i =0; i < threads.size(); ++i)
+            auto &outputs = m_outputs;
+            
+            for (auto i = 0; i < threads.size(); ++i)
             {
                 std::size_t iStart = i*Lchunk;
                 // The last thread gets the remainder, shorter than the others if N mod Nthreads != 0
-                std::size_t iEnd = ((i == Nthreads - 1) ? m_outputs.size() - 1 : (i + 1)*Lchunk - 1);
-                auto &outputs = m_outputs;
+                std::size_t iEnd = ((i == Nthreads - 1) ? outputs.size() - 1 : (i + 1)*Lchunk - 1);
                 std::function<void(void)> f = [&outputs, iStart, iEnd]() {
-                    for (std::size_t i = iStart; i < iEnd; ++i) {
+                    for (std::size_t j = iStart; j < iEnd; ++j) {
                         try {
-                            outputs[i]->evaluate_one();
+                            outputs[j]->evaluate_one();
                         }
                         catch (...) {
-                            outputs[i]->exception_handler();
+                            outputs[j]->exception_handler();
                         }
                     }
                 };
                 m_pool->AddJob(f);
             }
+            // Now we wait for all threads to finish
             m_pool->WaitAll();
         };
 
