@@ -8,7 +8,7 @@ set (CMAKE_CXX_STANDARD 11)
 file(GLOB_RECURSE APP_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 # All global includes shall reside in the include directory
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/externals/ThreadPool2")
 
 macro(add_nix_libraries target)
     # Add DL and pthreads

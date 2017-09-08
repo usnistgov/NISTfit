@@ -19,6 +19,8 @@
 
 #include "Eigen/Dense"
 
+#include "ThreadPool.h"
+
 namespace NISTfit{
 
     // Forward definitions
@@ -76,6 +78,7 @@ namespace NISTfit{
     private:
         std::vector<std::shared_ptr<AbstractOutput> > m_outputs;
         std::vector<int> m_affinity_scheme; ///< A vector of processor indices that shall be used for each thread spun up, 0-based
+        std::unique_ptr<ThreadPool> m_pool; ///< A ThreadPool of threads
     protected:
         Eigen::MatrixXd J;
         Eigen::VectorXd r;
@@ -85,72 +88,30 @@ namespace NISTfit{
         std::mutex quit_mutex;
 
         /**
-        * @brief In an infinite loop, either run the evaluation, or wait
-        */
-        void evaluate_threaded(ThreadData *pData) {
-
-            std::unique_lock<std::mutex> l(pData->m, std::defer_lock);
-            while (true)
-            {
-                l.lock();
-
-                // Wait until the queue isn't empty or stop is signaled
-                pData->cv.wait(l, [pData]() {
-                    return (pData->stop || !pData->jobs.empty());
-                });
-
-                // Stop was signaled, let's exit the thread
-                if (pData->stop) { return; }
-
-                // Pop one task from the queue...
-                job j = std::move(pData->jobs.front());
-                pData->jobs.pop();
-
-                l.unlock();
-
-                // Execute the task!
-                j(pData);
-            }
-        };
-        /**
         * @brief Setup the threads that will be used to do the evaluations
         *
         */
         void setup_threads(short Nthreads) {
             // If you have requested a different number of threads than the threads 
             // that are up, stop the current threads
-            if (Nthreads != thread_data.size()) {
+            if (m_pool && Nthreads != m_pool->get_threads().size()) {
                 kill_threads();
             }
-            if (thread_data.empty()) {
-                // auto startTime = std::chrono::system_clock::now();
+            // Make a thread pool for the workers
+            m_pool = std::unique_ptr<ThreadPool>(new ThreadPool(Nthreads));
 
-                std::size_t Nmax = m_outputs.size();
-                std::size_t Lchunk = Nmax / Nthreads;
-
-                // Have to reconstruct because we cannot resize vector<ThreadData> because of non-copyconstructable members
-                thread_data = std::vector<ThreadData>(Nthreads);
-
-                for (long i = 0; i < Nthreads; ++i) {
-                    auto &td = thread_data[i];
-                    td.iStart = i*Lchunk;
-                    // The last thread gets the remainder, shorter than the others if Nmax mod Nthreads != 0
-                    td.iEnd = ((i == Nthreads - 1) ? m_outputs.size() : (i + 1)*Lchunk);
-                    td.eval = this;
-                    // Construct the thread that will actually do the evaluation
-                    td.t = std::thread(&AbstractEvaluator::evaluate_threaded, this, &td);
+            // Set the thread affinity if desired
 #if defined(WIN32)
-                    if (!m_affinity_scheme.empty() && i <= m_affinity_scheme.size()){
-                        // See http://stackoverflow.com/a/41574964/1360263
-                        auto affinity_mask = (static_cast<DWORD_PTR>(1) << m_affinity_scheme[i]); //core number starts from 0
-                        SetThreadAffinityMask(td.t.native_handle(), affinity_mask);
-                    }
-#endif
+            auto &threads = m_pool->get_threads();
+            for (long i = 0; i < Nthreads; ++i) {
+                std::thread &td = threads[i];
+                if (!m_affinity_scheme.empty() && i <= m_affinity_scheme.size()) {
+                    // See http://stackoverflow.com/a/41574964/1360263
+                    auto affinity_mask = (static_cast<DWORD_PTR>(1) << m_affinity_scheme[i]); //core number starts from 0
+                    SetThreadAffinityMask(td.native_handle(), affinity_mask);
                 }
-                // auto endTime = std::chrono::system_clock::now();
-                // double thread_setup_elap = std::chrono::duration<double>(endTime - startTime).count();
-                //std::cout << "thread setup:" << thread_setup_elap << " s\n";
             }
+#endif
         };
         /**
         * @brief Kill the threads that have been spun up to do the evaluations
@@ -158,19 +119,8 @@ namespace NISTfit{
         * This function is called when AbstractEvaluator is destroyed
         */
         void kill_threads() {
-
-            // Tell all threads to stop
-            for (auto& td : thread_data)
-            {
-                std::unique_lock<std::mutex> l(td.m);
-                td.stop = true;
-                td.cv.notify_one();
-
-            }
-            // Join all the threads
-            for (auto& td : thread_data) { td.t.join(); }
-            // Clear thread_data
-            thread_data.clear();
+            m_pool->JoinAll();
+            m_pool.release();
         };
         /// Add a single output to the list of outputs and connect pointer to AbstractEvaluator
         void add_output(const std::shared_ptr<AbstractOutput> &out) {
@@ -233,35 +183,29 @@ namespace NISTfit{
             //  no-op if threads are already initialized
             setup_threads(Nthreads);
 
-            // Now fire!
-            for (auto &td : thread_data){
+            std::size_t Nmax = m_outputs.size();
+            std::size_t Lchunk = Nmax / Nthreads;
 
-                // The payload that will execute when the job is run
-                job j([](ThreadData *pData)
-                    {
-                        for (std::size_t j = pData->iStart; j < pData->iEnd; ++j) {
-                            try{
-                                pData->eval->m_outputs[j]->evaluate_one();
-                            }
-                            catch(...){
-                                pData->eval->m_outputs[j]->exception_handler();
-                            }
+            auto &threads = m_pool->get_threads();
+            for (auto i =0; i < threads.size(); ++i)
+            {
+                std::size_t iStart = i*Lchunk;
+                // The last thread gets the remainder, shorter than the others if N mod Nthreads != 0
+                std::size_t iEnd = ((i == Nthreads - 1) ? m_outputs.size() - 1 : (i + 1)*Lchunk - 1);
+                auto &outputs = m_outputs;
+                std::function<void(void)> f = [&outputs, iStart, iEnd]() {
+                    for (std::size_t i = iStart; i < iEnd; ++i) {
+                        try {
+                            outputs[i]->evaluate_one();
+                        }
+                        catch (...) {
+                            outputs[i]->exception_handler();
                         }
                     }
-                );
-                futures.push_back(j.get_future());
-
-                // Add the job to the queue
-                std::unique_lock<std::mutex> l(td.m);
-                td.jobs.push(std::move(j));
-
-                // Notify the thread that there is work do to...
-                td.cv.notify_one();
+                };
+                m_pool->AddJob(f);
             }
-            
-            // Wait for all the tasks to be completed...
-            for (auto& f : futures) { f.wait(); }
-            futures.clear();
+            m_pool->WaitAll();
         };
 
         /** @brief Construct the Jacobian matrix \f$\mathbf{J}\f$
