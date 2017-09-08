@@ -13,7 +13,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURC
 macro(add_nix_libraries target)
     # Add DL and pthreads
     FIND_PACKAGE ( Threads REQUIRED )
-    target_link_libraries (${target} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+    target_link_libraries (${target} PRIVATE ${CMAKE_DL_LIBS} PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 endmacro()
 
 macro(add_libraries target)
