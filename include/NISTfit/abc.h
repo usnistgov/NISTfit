@@ -39,19 +39,19 @@ namespace NISTfit{
         /// The AbstractEvaluator::add_output() function takes case of this automatically.
         AbstractEvaluator *m_evaluator;
     public:
-        virtual double get_error() = 0;
-        virtual std::vector<double> &get_Jacobian_row() { throw std::exception(); };
+        virtual double get_error() const = 0;
+        virtual const std::vector<double> &get_Jacobian_row() const { throw std::exception(); };
         /// Evaluate one input and cache the output variables internally
         /// This class should already be holding a pointer to the input to which it is connected
         virtual void evaluate_one() = 0;
         /// Return the linked input state
-        virtual std::shared_ptr<AbstractInput> get_input() = 0;
+        virtual std::shared_ptr<AbstractInput> get_input() const = 0;
         /// A pure-virtual function that is used to handle ANY exception that is caught in the
         /// evaluate_one function.  You might want to consider re-throwing the exception in the function
         /// and then setting an error flag/message, etc.
         virtual void exception_handler() = 0;
         /// Get the pointer to the AbstractEvaluator linked with this output
-        virtual const AbstractEvaluator & get_AbstractEvaluator() { return *m_evaluator; }
+        virtual const AbstractEvaluator & get_AbstractEvaluator() const { return *m_evaluator; }
         /// Set the pointer to the AbstractEvaluator linked with this output
         virtual void set_AbstractEvaluator(AbstractEvaluator *evaluator) { m_evaluator = evaluator; }
     };
@@ -287,9 +287,9 @@ namespace NISTfit{
             NumericOutput(const std::shared_ptr<NumericInput> &in) : m_in(in) {};
             /// Move constructor
             NumericOutput(const std::shared_ptr<NumericInput> &&in) : m_in(in) {};
-            virtual double get_error() override { return m_y_calc - m_in->y(); };
-            std::vector<double> & get_Jacobian_row() override { return Jacobian_row; }
-            std::shared_ptr<AbstractInput> get_input() override { return m_in; };
+            virtual double get_error() const override { return m_y_calc - m_in->y(); };
+            const std::vector<double> & get_Jacobian_row() const override  { return Jacobian_row; }
+            std::shared_ptr<AbstractInput> get_input() const override { return m_in; };
             void resize(std::size_t N){ Jacobian_row.resize(N); };
     };
     
