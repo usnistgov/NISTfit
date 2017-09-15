@@ -22,7 +22,7 @@ public:
         // Get the input
         double lhs = 0;
         // Do the calculation
-        const std::vector<double> &c = get_AbstractEvaluator().get_const_coefficients();
+        const std::vector<double> &c = get_const_coefficients();
         if (c.size() != m_order +1){ throw std::range_error("lengths do not agree"); }
         for (std::size_t i = 0; i < m_order+1; ++i) {
             double term = pow(m_in->x(), static_cast<int>(i));

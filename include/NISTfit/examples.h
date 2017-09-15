@@ -52,6 +52,7 @@ double cos_expansion(double x, int N) {
 class DecayingExponentialOutput : public NumericOutput {
 protected:
     int N; ///< Order of Taylor series expansion
+    std::vector<double> c_fix = {1,2,3};
 public:
     DecayingExponentialOutput(int N,  
                               const std::shared_ptr<NumericInput> &in)
@@ -60,9 +61,10 @@ public:
     /// (implementation of this method is required), set the calculated value 
     /// to something very large
     void exception_handler() override { m_y_calc = 100000; }
+    //const std::vector<double> & get_const_coefficients() const override { return c_fix; };
     void evaluate_one() override {
         // Get a reference to the coefficients
-        const std::vector<double> &c = get_AbstractEvaluator().get_const_coefficients();
+        const std::vector<double> &c = get_const_coefficients();
         // Do the calculation
         const double x = m_in->x(), e = exp_expansion(-c[0]*x, N), 
                      s1 = sin_expansion(c[1]*x, N), c2 = cos_expansion(c[2]*x, N);

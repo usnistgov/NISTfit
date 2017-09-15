@@ -28,7 +28,7 @@ public:
     void evaluate_one(){
         // Do the calculation
         double y = 0;
-        const std::vector<double> &c = get_AbstractEvaluator().get_const_coefficients();
+        const std::vector<double> &c = get_const_coefficients();
         for (int repeat = 0; repeat < 1; ++repeat){
         for (std::size_t i = 0; i < m_e.size(); ++i) {
             double term = pow(m_in->x(), m_e[i]);
@@ -172,6 +172,53 @@ void speedtest_fit_water_ancillary(short Nthread_max)
 
 void speedtest_decaying_exponential(short Nthread_max)
 {   
+    /// **************
+    /// No evaluator
+    /// **************
+    auto build_outputs = [](double Nmax, int N) {
+        double a = 0.2, b = 3, c = 1.3;
+        std::vector<std::shared_ptr<AbstractOutput> > outputs;
+        for (double i = 0; i < Nmax; ++i) {
+            double x = i / ((double)Nmax);
+            double y = exp(-a*x)*sin(b*x)*cos(c*x);
+            auto in = std::shared_ptr<NumericInput>(new NumericInput(x, y));
+            outputs.push_back(std::shared_ptr<AbstractOutput>(new DecayingExponentialOutput(N, in)));
+        }
+        return outputs;
+    };
+    auto eval_outputs = [](std::vector<std::shared_ptr<AbstractOutput>> &outputs, short Nrepeats, bool threading, short Nthreads = 1) {
+        //eval->evaluate_parallel(Nthreads); // Force pool population
+        auto startTime = std::chrono::high_resolution_clock::now();
+        for (auto i = 0; i < Nrepeats; ++i) {
+            if (!threading) {
+                for (auto i = 0; i < outputs.size(); ++i){
+                    outputs[i]->evaluate_one();
+                }
+            }
+            else {
+                ThreadPool pool(Nthreads);
+                std::size_t Lchunk = outputs.size() / Nthreads;
+                for (auto i = 0; i < Nthreads; ++i){
+                    std::size_t iStart = i*Lchunk;
+                    // The last thread gets the remainder, shorter than the others if N mod Nthreads != 0
+                    std::size_t iEnd = ((i == Nthreads - 1) ? outputs.size() - 1 : (i + 1)*Lchunk - 1);
+                    std::function<void(void)> f = [&outputs, iStart, iEnd]() {
+                        for (auto i = iStart; i <= iEnd; ++i) {
+                            outputs[i]->evaluate_one();
+                        }
+                    };
+                    pool.AddJob(f);
+                }
+                pool.WaitAll();
+            }
+        }
+        auto endTime = std::chrono::high_resolution_clock::now();
+        return std::chrono::duration<double>(endTime - startTime).count();
+    };
+
+    // **************
+    // With evaluator
+    // **************
     auto build_eval = [](double Nmax, int N){
         double a = 0.2, b = 3, c = 1.3;
         std::vector<std::shared_ptr<AbstractOutput> > outputs;
@@ -213,11 +260,11 @@ void speedtest_decaying_exponential(short Nthread_max)
     std::cout << "XXXXXXXXXX Evaluate DECAYING EXPONENTIAL with N-term expansions XXXXXXXXXX" << std::endl;
     for (long N = 10; N <= 300; N += 20) {
         long Nrepeats = 1;
-        auto eval = build_eval(32000/*Nmax*/, N);
-        auto time_serial = eval_decaying_exponential(eval, Nrepeats, false, 1);
+        auto eval = build_outputs(32000/*Nmax*/, N);
+        auto time_serial = eval_outputs(eval, Nrepeats, false, 1);
         for (short Nthreads = 1; Nthreads <= Nthread_max; ++Nthreads) {
             const bool threading = true;
-            auto time_parallel = eval_decaying_exponential(eval, Nrepeats, threading, Nthreads);
+            auto time_parallel = eval_outputs(eval, Nrepeats, threading, Nthreads);
             printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), time_serial / time_parallel, time_serial, time_parallel);
         }
     }

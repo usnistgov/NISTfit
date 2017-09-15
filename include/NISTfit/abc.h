@@ -291,6 +291,7 @@ namespace NISTfit{
             /// Move constructor
             NumericOutput(const std::shared_ptr<NumericInput> &&in) : m_in(in) {};
             virtual double get_error() const override { return m_y_calc - m_in->y(); };
+            virtual const std::vector<double> & get_const_coefficients() const { return get_AbstractEvaluator().get_const_coefficients(); }
             const std::vector<double> & get_Jacobian_row() const override  { return Jacobian_row; }
             AbstractInput & get_input() const override { return *static_cast<AbstractInput*>(m_in.get()); };
             void resize(std::size_t N){ Jacobian_row.resize(N); };
@@ -321,7 +322,7 @@ namespace NISTfit{
         /// Evaluate the function, and the Jacobian row by numerical differentiation
         void evaluate_one() override{
             // Do the calculation
-            const std::vector<double> &c = get_AbstractEvaluator().get_const_coefficients();
+            const std::vector<double> &c = get_const_coefficients();
             m_y_calc = call_func(c);
             for (std::size_t i = 0; i < c.size(); ++i) {
                 std::vector<double> cp = c, cm = c;
