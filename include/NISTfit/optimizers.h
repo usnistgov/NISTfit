@@ -27,7 +27,7 @@ namespace NISTfit{
      * @param E The derived instance of AbstractEvaluator used to evaluate the terms in the sum-of-squares
      * @param options The options to be passed to this function
      */
-    std::vector<double> LevenbergMarquardt(std::shared_ptr<AbstractEvaluator> &E, LevenbergMarquardtOptions &options);
+    std::vector<double> LevenbergMarquardt(std::unique_ptr<AbstractEvaluator> &E, LevenbergMarquardtOptions &options);
 
 } /* NISTfit */
 

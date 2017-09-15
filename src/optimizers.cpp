@@ -3,7 +3,7 @@
 #include "Eigen/Dense"
 #include <cfloat>
 
-std::vector<double> NISTfit::LevenbergMarquardt(std::shared_ptr<AbstractEvaluator> &E,
+std::vector<double> NISTfit::LevenbergMarquardt(std::unique_ptr<AbstractEvaluator> &E,
                                                 LevenbergMarquardtOptions &options)
 {
     double F_previous = 8888888;

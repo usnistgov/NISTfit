@@ -11,8 +11,8 @@ protected:
     std::size_t m_order; // The order of the polynomial (2: quadratic, 3: cubic, etc...)
 public:
     PolynomialOutput(std::size_t order,
-                     const std::shared_ptr<NumericInput> &in) 
-        : NumericOutput(in), m_order(order) {
+                     std::unique_ptr<NumericInput> &&in) 
+        : NumericOutput(std::move(in)), m_order(order) {
         resize(order + 1); // Set the size of the Jacobian row
     };
     /// The exception handler must be implemented; here we just 

@@ -18,8 +18,8 @@ protected:
     const std::vector<double> m_e; // Exponents for terms in saturation pressure equation
 public:
     SaturationPressureOutput(const std::vector<double> &e,
-                             const std::shared_ptr<NumericInput> &in)
-        : NumericOutput(in), m_e(e) {
+                             std::unique_ptr<NumericInput> &&in)
+        : NumericOutput(std::move(in)), m_e(e) {
         resize(e.size());
     };
     /// In the highly unlikely case of an exception in this class (implementation of this method is required), 
@@ -57,15 +57,15 @@ double fit_waterpanc(bool threading, std::size_t N, short Nthreads) {
     }
 
     // Create the outputs
-    std::vector<std::shared_ptr<AbstractOutput> > outputs;
+    std::vector<std::unique_ptr<AbstractOutput> > outputs;
     for (int i = 0; i < theta.size(); ++i) {
-        auto in = std::shared_ptr<NumericInput>(new NumericInput(theta[i], LHS[i]));
-        outputs.push_back(std::shared_ptr<AbstractOutput>(new SaturationPressureOutput(e, in)));
+        auto in = std::unique_ptr<NumericInput>(new NumericInput(theta[i], LHS[i]));
+        outputs.push_back(std::unique_ptr<AbstractOutput>(new SaturationPressureOutput(e, std::move(in))));
     }
     
     // Instantiate the evaluator
-    std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
-    eval->add_outputs(outputs);
+    std::unique_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+    eval->add_outputs(std::move(outputs));
     
     // Run and time
     std::vector<double> c = { 1,1,1,1,1,1 };
@@ -79,15 +79,15 @@ double fit_waterpanc(bool threading, std::size_t N, short Nthreads) {
 
 double fit_polynomial(bool threading, std::size_t Nmax, short Nthreads)
 {
-    std::vector<std::shared_ptr<AbstractOutput> > outputs;
+    std::vector<std::unique_ptr<AbstractOutput> > outputs;
     for (double i = 0; i < Nmax; ++i) {
         double x = i / ((double)Nmax);
         double y = 1 + 2*x + 3*x*x;
-        auto in = std::shared_ptr<NumericInput>(new NumericInput(x, y));
-        outputs.push_back(std::shared_ptr<AbstractOutput>(new PolynomialOutput(2, in)));
+        auto in = std::unique_ptr<NumericInput>(new NumericInput(x, y));
+        outputs.push_back(std::unique_ptr<AbstractOutput>(new PolynomialOutput(2, std::move(in))));
     }
-    std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
-    eval->add_outputs(outputs);
+    std::unique_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+    eval->add_outputs(std::move(outputs));
     
     std::vector<double> c = { -10, -2, 2.5 };
     auto startTime = std::chrono::system_clock::now();
@@ -101,17 +101,17 @@ double fit_polynomial(bool threading, std::size_t Nmax, short Nthreads)
 double fit_decaying_exponential_finite_diff(bool threading, std::size_t Nmax, short Nthreads, long N)
 {
     double a = 0.2, b = 3, c = 1.3;
-    std::vector<std::shared_ptr<AbstractOutput> > outputs;
+    std::vector<std::unique_ptr<AbstractOutput> > outputs;
     for (double i = 0; i < Nmax; ++i) {
         double x = i / ((double)Nmax);
         double y = exp(-a*x)*sin(b*x)*cos(c*x);
-        auto in = std::shared_ptr<NumericInput>(new NumericInput(x, y));
+        auto in = std::unique_ptr<NumericInput>(new NumericInput(x, y));
         std::function<double(const std::vector<double> &)> f = [x](const std::vector<double> &c){ return exp(-c[0]*x)*sin(c[1]*x)*cos(c[2]*x); };
         std::vector<double> dc(3,0.01); // Set of dci in the finite difference, where parameters are evaluated at c[i] + dc[i] and c[i] - dc[i]
-        outputs.push_back(std::shared_ptr<AbstractOutput>(new FiniteDiffOutput(in, f, dc)));
+        outputs.push_back(std::unique_ptr<AbstractOutput>(new FiniteDiffOutput(std::move(in), f, dc)));
     }
-    std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
-    eval->add_outputs(outputs);
+    std::unique_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+    eval->add_outputs(std::move(outputs));
     
     std::vector<double> c0 = { 1, 1, 1 };
     auto startTime = std::chrono::system_clock::now();
@@ -125,15 +125,15 @@ double fit_decaying_exponential_finite_diff(bool threading, std::size_t Nmax, sh
 double fit_decaying_exponential(bool threading, std::size_t Nmax, short Nthreads, long N)
 {
     double a = 0.2, b = 3, c = 1.3;
-    std::vector<std::shared_ptr<AbstractOutput> > outputs;
+    std::vector<std::unique_ptr<AbstractOutput> > outputs;
     for (double i = 0; i < Nmax; ++i) {
         double x = i / ((double)Nmax);
         double y = exp(-a*x)*sin(b*x)*cos(c*x);
-        auto in = std::shared_ptr<NumericInput>(new NumericInput(x, y));
-        outputs.push_back(std::shared_ptr<AbstractOutput>(new DecayingExponentialOutput(N, in)));
+        auto in = std::unique_ptr<NumericInput>(new NumericInput(x, y));
+        outputs.push_back(std::unique_ptr<AbstractOutput>(new DecayingExponentialOutput(N, std::move(in))));
     }
-    std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
-    eval->add_outputs(outputs);
+    std::unique_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+    eval->add_outputs(std::move(outputs));
 
     std::vector<double> c0 = { 1, 1, 1 };
     auto startTime = std::chrono::system_clock::now();
@@ -174,18 +174,18 @@ void speedtest_decaying_exponential(short Nthread_max)
 {   
     auto build_eval = [](double Nmax, int N){
         double a = 0.2, b = 3, c = 1.3;
-        std::vector<std::shared_ptr<AbstractOutput> > outputs;
+        std::vector<std::unique_ptr<AbstractOutput> > outputs;
         for (double i = 0; i < Nmax; ++i) {
             double x = i / ((double)Nmax);
             double y = exp(-a*x)*sin(b*x)*cos(c*x);
-            auto in = std::shared_ptr<NumericInput>(new NumericInput(x, y));
-            outputs.push_back(std::shared_ptr<AbstractOutput>(new DecayingExponentialOutput(N, in)));
+            auto in = std::unique_ptr<NumericInput>(new NumericInput(x, y));
+            outputs.push_back(std::unique_ptr<AbstractOutput>(new DecayingExponentialOutput(N, std:: move(in))));
         }
-        std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
-        eval->add_outputs(outputs);
+        std::unique_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+        eval->add_outputs(std::move(outputs));
         return eval;
     };
-    auto eval_decaying_exponential = [](std::shared_ptr<AbstractEvaluator> &eval, short Nrepeats,  bool threading, short Nthreads = 1){
+    auto eval_decaying_exponential = [](std::unique_ptr<AbstractEvaluator> &eval, short Nrepeats,  bool threading, short Nthreads = 1){
         eval->set_coefficients({1,1,1});
         eval->evaluate_parallel(Nthreads); // Force pool population
         auto startTime = std::chrono::high_resolution_clock::now();
@@ -201,7 +201,7 @@ void speedtest_decaying_exponential(short Nthread_max)
         auto endTime = std::chrono::high_resolution_clock::now();
         return std::chrono::duration<double>(endTime - startTime).count();
     };
-    auto fit_decaying_exponential = [](std::shared_ptr<AbstractEvaluator> &eval, bool threading, short Nthreads = 1){
+    auto fit_decaying_exponential = [](std::unique_ptr<AbstractEvaluator> &eval, bool threading, short Nthreads = 1){
         std::vector<double> c0 = { 1, 1, 1 };
         auto startTime = std::chrono::high_resolution_clock::now();
         auto opts = LevenbergMarquardtOptions();

@@ -54,8 +54,8 @@ protected:
     int N; ///< Order of Taylor series expansion
 public:
     DecayingExponentialOutput(int N,  
-                              const std::shared_ptr<NumericInput> &in)
-        : NumericOutput(in), N(N) { resize(3); };
+                              std::unique_ptr<NumericInput> &&in)
+        : NumericOutput(std::move(in)), N(N) { resize(3); };
     /// In the highly unlikely case of an exception in this class, 
     /// (implementation of this method is required), set the calculated value 
     /// to something very large

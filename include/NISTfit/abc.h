@@ -45,7 +45,7 @@ namespace NISTfit{
         /// This class should already be holding a pointer to the input to which it is connected
         virtual void evaluate_one() = 0;
         /// Return the linked input state
-        virtual std::shared_ptr<AbstractInput> get_input() const = 0;
+        virtual const AbstractInput & get_input() const = 0;
         /// A pure-virtual function that is used to handle ANY exception that is caught in the
         /// evaluate_one function.  You might want to consider re-throwing the exception in the function
         /// and then setting an error flag/message, etc.
@@ -60,7 +60,7 @@ namespace NISTfit{
     class AbstractEvaluator
     {
     private:
-        std::vector<std::shared_ptr<AbstractOutput> > m_outputs;
+        std::vector<std::unique_ptr<AbstractOutput> > m_outputs;
         std::vector<int> m_affinity_scheme; ///< A vector of processor indices that shall be used for each thread spun up, 0-based
         std::unique_ptr<ThreadPool> m_pool; ///< A ThreadPool of threads
     protected:
@@ -103,8 +103,8 @@ namespace NISTfit{
             }
         };
         /// Add a single output to the list of outputs and connect pointer to AbstractEvaluator
-        void add_output(const std::shared_ptr<AbstractOutput> &out) {
-            m_outputs.push_back(out);
+        void add_output(std::unique_ptr<AbstractOutput> &&out) {
+            m_outputs.emplace_back(std::move(out));
             m_outputs.back()->set_AbstractEvaluator(this);
         }
     public:
@@ -113,13 +113,13 @@ namespace NISTfit{
         /// Get the size of the outputs
         std::size_t get_outputs_size() { return m_outputs.size(); };
         /// Add a vector of instances derived from AbstractOutput to this evaluator
-        void add_outputs(const std::vector<std::shared_ptr<AbstractOutput> > &outputs) {
+        void add_outputs(std::vector<std::unique_ptr<AbstractOutput> > &&outputs) {
             for (auto &out : outputs) {
-                add_output(out);
+                add_output(std::move(out));
             }
         }
         /// Get a reference to the vector of outputs
-        std::vector<std::shared_ptr<AbstractOutput> > & get_outputs() { return m_outputs; };
+        std::vector<std::unique_ptr<AbstractOutput> > & get_outputs() { return m_outputs; };
         /// Destructor
         ~AbstractEvaluator() {
             // auto startTime = std::chrono::system_clock::now();
@@ -282,17 +282,17 @@ namespace NISTfit{
     /// The data structure for an output for the single y output variable
     class NumericOutput : public AbstractOutput{
         protected:
-            const std::shared_ptr<NumericInput> m_in;
+            const std::unique_ptr<NumericInput> m_in;
             double m_y_calc;
             std::vector<double> Jacobian_row; // Partial derivative of calculated value with respect to each independent variable
         public:
-            /// Copy constructor
-            NumericOutput(const std::shared_ptr<NumericInput> &in) : m_in(in) {};
             /// Move constructor
-            NumericOutput(const std::shared_ptr<NumericInput> &&in) : m_in(in) {};
+            NumericOutput(std::unique_ptr<NumericInput> &&in) : m_in(std::move(in)) {};
             virtual double get_error() const override { return m_y_calc - m_in->y(); };
             const std::vector<double> & get_Jacobian_row() const override  { return Jacobian_row; }
-            std::shared_ptr<AbstractInput> get_input() const override { return m_in; };
+            const AbstractInput & get_input() const override { 
+                return *dynamic_cast<AbstractInput*>(m_in.get()); 
+            };
             void resize(std::size_t N){ Jacobian_row.resize(N); };
     };
     
@@ -303,17 +303,11 @@ namespace NISTfit{
         std::function<double(const std::vector<double> &)> m_f;
         std::vector<double> m_dc;
     public:
-        /// Copy constructor w/ passed in model function
-        FiniteDiffOutput(const std::shared_ptr<NumericInput> &in,
-                         const std::function<double(const std::vector<double> &)> &f,
-                         const std::vector<double> &dc)
-            : NumericOutput(in), m_f(f), m_dc(dc) {
-                resize(dc.size());};
         /// Move constructor w/ passed in model function
-        FiniteDiffOutput(const std::shared_ptr<NumericInput> &&in,
+        FiniteDiffOutput(std::unique_ptr<NumericInput> &&in,
                          const std::function<double(const std::vector<double> &)> &f,
                          const std::vector<double> &dc)
-            : NumericOutput(in), m_f(f), m_dc(dc) {
+            : NumericOutput(std::move(in)), m_f(f), m_dc(dc) {
                 resize(dc.size());};
         virtual double call_func(const std::vector<double> &c){
             return m_f(c);

@@ -18,15 +18,15 @@ using namespace NISTfit;
 double fit_decaying_exponential(bool threading, std::size_t Nmax, short Nthreads, long N, long Nrepeat)
 {
     double a = 0.2, b = 3, c = 1.3;
-    std::vector<std::shared_ptr<AbstractOutput> > outputs;
+    std::vector<std::unique_ptr<AbstractOutput> > outputs;
     for (double i = 0; i < Nmax; ++i) {
         double x = i / ((double)Nmax);
         double y = exp(-a*x)*sin(b*x)*cos(c*x);
-        auto in = std::shared_ptr<NumericInput>(new NumericInput(x, y));
-        outputs.push_back(std::shared_ptr<AbstractOutput>(new DecayingExponentialOutput(N, in)));
+        auto in = std::unique_ptr<NumericInput>(new NumericInput(x, y));
+        outputs.push_back(std::unique_ptr<AbstractOutput>(new DecayingExponentialOutput(N, std::move(in))));
     }
-    std::shared_ptr<AbstractEvaluator> eval(new NumericEvaluator());
-    eval->add_outputs(outputs);
+    std::unique_ptr<AbstractEvaluator> eval(new NumericEvaluator());
+    eval->add_outputs(std::move(outputs));
 
     std::vector<double> c0 = { 1, 1, 1 };
     auto startTime = std::chrono::system_clock::now();
@@ -73,26 +73,26 @@ void init_fitter(py::module &m){
         }
     };
 
-    py::class_<AbstractOutput, std::shared_ptr<AbstractOutput> >(m, "AbstractOutput")
+    py::class_<AbstractOutput, std::unique_ptr<AbstractOutput> >(m, "AbstractOutput")
         .def("get_error", &AbstractOutput::get_error)
         ;
 
-    py::class_<PolynomialOutput, AbstractOutput, std::shared_ptr<PolynomialOutput> >(m, "PolynomialOutput")
-        .def(py::init<std::size_t, const std::shared_ptr<NumericInput> &>())
+    py::class_<PolynomialOutput, AbstractOutput, std::unique_ptr<PolynomialOutput> >(m, "PolynomialOutput")
+        .def(py::init<std::size_t, std::unique_ptr<NumericInput> &&>())
         ;
 
-    py::class_<DecayingExponentialOutput, AbstractOutput, std::shared_ptr<DecayingExponentialOutput> >(m, "DecayingExponentialOutput")
-        .def(py::init<int, const std::shared_ptr<NumericInput> &>())
+    py::class_<DecayingExponentialOutput, AbstractOutput, std::unique_ptr<DecayingExponentialOutput> >(m, "DecayingExponentialOutput")
+        .def(py::init<int, std::unique_ptr<NumericInput> &&>())
         ;
 
-    py::class_<FiniteDiffOutput, AbstractOutput, PyFiniteDiffOutput /* trampoline */, std::shared_ptr<FiniteDiffOutput> >(m, "FiniteDiffOutput")
-        .def(py::init<const std::shared_ptr<NumericInput> &, 
+    py::class_<FiniteDiffOutput, AbstractOutput, PyFiniteDiffOutput /* trampoline */, std::unique_ptr<FiniteDiffOutput> >(m, "FiniteDiffOutput")
+        .def(py::init<std::unique_ptr<NumericInput> &&, 
                       const std::function<double(const std::vector<double> &)>,
                       const std::vector<double> &
                       >())
         ;
 
-    py::class_<AbstractEvaluator, std::shared_ptr<AbstractEvaluator>>(m, "AbstractEvaluator")
+    py::class_<AbstractEvaluator, std::unique_ptr<AbstractEvaluator>>(m, "AbstractEvaluator")
         .def("evaluate_serial", &AbstractEvaluator::evaluate_serial)
         .def("evaluate_parallel", &AbstractEvaluator::evaluate_parallel)
         .def("get_outputs_size", &AbstractEvaluator::get_outputs_size)
@@ -102,12 +102,12 @@ void init_fitter(py::module &m){
         .def("set_affinity_scheme", &AbstractEvaluator::set_affinity_scheme)
         ;
 
-    py::class_<NumericEvaluator, AbstractEvaluator, std::shared_ptr<NumericEvaluator> >(m, "NumericEvaluator")
+    py::class_<NumericEvaluator, AbstractEvaluator, std::unique_ptr<NumericEvaluator> >(m, "NumericEvaluator")
         .def(py::init<>())
         .def("set_coefficients", &NumericEvaluator::set_coefficients)
         ;
 
-    py::class_<NumericInput, std::shared_ptr<NumericInput> >(m, "NumericInput")
+    py::class_<NumericInput, std::unique_ptr<NumericInput> >(m, "NumericInput")
         .def(py::init<double, double>())
         .def("x", &NumericInput::x)
         .def("y", &NumericInput::y);
