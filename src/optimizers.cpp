@@ -65,6 +65,10 @@ std::vector<double> NISTfit::LevenbergMarquardt(std::shared_ptr<AbstractEvaluato
                 nu *= 2;
             }
         }
+        if (options.debug_level > 0){
+            printf("r(min,max,mean): %g %g %g; F: %g\n", r.minCoeff(), r.maxCoeff(), r.mean(), F);
+            std::cout << c_wrap << std::endl;
+        }
 
         // If the residual has stopped changing, stop, no sense to keep evaluating 
         // with the same coefficients

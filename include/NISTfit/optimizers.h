@@ -17,6 +17,7 @@ namespace NISTfit{
         double tau0; ///< Madsen et al. recommends setting tau0 to 1e-6 if the initial guess 
                      ///< is believed to be a good estimate of the final solution, or 
                      ///< larger values like 1e-3 or 1 if the guess value is less certain
+        short debug_level = 0; ///< The higher this is, the more will be output to screen; 0 is no additional output
 
         LevenbergMarquardtOptions() : omega(1.0), tau0(1.0) {};
     };
