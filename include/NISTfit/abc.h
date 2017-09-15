@@ -97,8 +97,10 @@ namespace NISTfit{
         * This function is called when AbstractEvaluator is destroyed
         */
         void kill_threads() {
-            m_pool->JoinAll();
-            m_pool.release();
+            if (m_pool){
+                m_pool->JoinAll();
+                m_pool.release();
+            }
         };
         /// Add a single output to the list of outputs and connect pointer to AbstractEvaluator
         void add_output(const std::shared_ptr<AbstractOutput> &out) {
@@ -169,7 +171,8 @@ namespace NISTfit{
             {
                 std::size_t iStart = i*Lchunk;
                 // The last thread gets the remainder, shorter than the others if N mod Nthreads != 0
-                std::size_t iEnd = ((i == Nthreads - 1) ? outputs.size() - 1 : (i + 1)*Lchunk - 1);
+                // iEnd is NON-INCLUSIVE !!!!!!!!!!
+                std::size_t iEnd = ((i == Nthreads - 1) ? outputs.size() : (i + 1)*Lchunk);
                 std::function<void(void)> f = [&outputs, iStart, iEnd]() {
                     for (std::size_t j = iStart; j < iEnd; ++j) {
                         try {
