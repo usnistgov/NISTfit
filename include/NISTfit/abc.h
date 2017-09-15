@@ -45,7 +45,7 @@ namespace NISTfit{
         /// This class should already be holding a pointer to the input to which it is connected
         virtual void evaluate_one() = 0;
         /// Return the linked input state
-        virtual std::shared_ptr<AbstractInput> get_input() const = 0;
+        virtual AbstractInput & get_input() const = 0;
         /// A pure-virtual function that is used to handle ANY exception that is caught in the
         /// evaluate_one function.  You might want to consider re-throwing the exception in the function
         /// and then setting an error flag/message, etc.
@@ -292,7 +292,7 @@ namespace NISTfit{
             NumericOutput(const std::shared_ptr<NumericInput> &&in) : m_in(in) {};
             virtual double get_error() const override { return m_y_calc - m_in->y(); };
             const std::vector<double> & get_Jacobian_row() const override  { return Jacobian_row; }
-            std::shared_ptr<AbstractInput> get_input() const override { return m_in; };
+            AbstractInput & get_input() const override { return *static_cast<AbstractInput*>(m_in.get()); };
             void resize(std::size_t N){ Jacobian_row.resize(N); };
     };
     

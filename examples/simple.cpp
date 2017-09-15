@@ -187,7 +187,7 @@ void speedtest_decaying_exponential(short Nthread_max)
     };
     auto eval_decaying_exponential = [](std::shared_ptr<AbstractEvaluator> &eval, short Nrepeats,  bool threading, short Nthreads = 1){
         eval->set_coefficients({1,1,1});
-        eval->evaluate_parallel(Nthreads); // Force pool population
+        //eval->evaluate_parallel(Nthreads); // Force pool population
         auto startTime = std::chrono::high_resolution_clock::now();
         for (auto i = 0; i < Nrepeats; ++i){
             eval->set_coefficients({1,1+i/10000000.0,1});
