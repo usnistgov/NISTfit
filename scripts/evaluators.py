@@ -13,7 +13,7 @@ def get_eval_poly(Npoints):
 
 def get_eval_decaying_exponential(Norder):
     a = 0.2; b = 3; c = 1.3;
-    x = np.linspace(0, 2, 1200)
+    x = np.linspace(0, 2, 320)
     y = np.exp(-a*x)*np.sin(b*x)*np.cos(c*x)
     outputs = [NISTfit.DecayingExponentialOutput(Norder, NISTfit.NumericInput(_x, _y)) 
                for _x,_y in zip(x, y)]

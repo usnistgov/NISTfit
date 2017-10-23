@@ -42,10 +42,9 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
             eva.set_coefficients(o.c0)
             N = eva.get_outputs_size()
             if method == 'evaluate':
-                tic = timeit.default_timer()
-                for i in range(Nrepeats):
-                    eva.evaluate_serial(0, N, 0)
-                toc = timeit.default_timer()
+                times = eva.time_evaluate_serial(Nrepeats)
+                tic = 0
+                toc = np.mean(np.sort(times)[1:Nrepeats-1])*Nrepeats
             elif method == 'LM':
                 o.threading = False
                 tic = timeit.default_timer()
@@ -74,10 +73,9 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
                 elap = 0
                 cfinal = eva.evaluate_parallel(Nthreads)
                 if method == 'evaluate':
-                    tic = timeit.default_timer()
-                    for i in range(Nrepeats):
-                        cfinal = eva.evaluate_parallel(Nthreads)
-                    toc = timeit.default_timer()
+                    times = eva.time_evaluate_parallel(Nthreads, Nrepeats)
+                    tic = 0
+                    toc = np.mean(np.sort(times)[1:Nrepeats-1])*Nrepeats
                 elif method == 'LM':
                     tic = timeit.default_timer()
                     for i in range(Nrepeats):
@@ -166,10 +164,10 @@ if __name__=='__main__':
     for method in ['evaluate','LM']:
         ofname = method+'-speedup_polynomial'
         generate_results(evaluators.get_eval_poly, [120,12000], ofname,
-                         Nthreads_max = Nthreads_max, method = method, Nrepeats = 200)
+                         Nthreads_max = Nthreads_max, method = method, Nrepeats = 20)
         plot_results(ofname)
 
         ofname = method+'-speedup_decaying_exponential'
-        generate_results(evaluators.get_eval_decaying_exponential, [50,5,-1], 
-                  ofname, Nthreads_max = Nthreads_max, method = method, Nrepeats = 50)
+        generate_results(evaluators.get_eval_decaying_exponential, [200,50,5,-1], 
+                  ofname, Nthreads_max = Nthreads_max, method = method, Nrepeats = 100)
         plot_results(ofname)

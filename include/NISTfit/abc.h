@@ -63,6 +63,7 @@ namespace NISTfit{
         std::vector<std::shared_ptr<AbstractOutput> > m_outputs;
         std::vector<int> m_affinity_scheme; ///< A vector of processor indices that shall be used for each thread spun up, 0-based
         std::unique_ptr<ThreadPool> m_pool; ///< A ThreadPool of threads
+        std::vector<double> m_times; ///< Elapsed times for each parallel payload
     protected:
         Eigen::MatrixXd J;
         Eigen::VectorXd r;
@@ -76,6 +77,7 @@ namespace NISTfit{
             if (!m_pool || Nthreads != m_pool->get_threads().size()){
                 // Make a thread pool for the workers
                 m_pool = std::unique_ptr<ThreadPool>(new ThreadPool(Nthreads));
+                m_times.resize(Nthreads);
       
                 // Set the thread affinity if desired
 #if defined(WIN32)
@@ -128,8 +130,9 @@ namespace NISTfit{
             // double thread_kill_elap = std::chrono::duration<double>(endTime - startTime).count();
             //std::cout << "thread teardown:" << thread_kill_elap << " s\n";
         }
+            std::vector<double> get_times(){ return m_times; }
 
-        /** 
+        /**
          * @brief Evaluate the residual function in serial operation for the input vector indices in the range [iInputStart, iInputStop)
          * @param iInputStart The starting index (included in the output)
          * @param iInputStop The stopping index (NOT included in the output) (a la Python)
@@ -150,38 +153,62 @@ namespace NISTfit{
                 }
             }
         };
+        
+        // Return a vector of times for each repeat of calling evaluate_parallel
+        std::vector<double> time_evaluate_parallel(short Nthreads, short Nrepeats){
+            std::vector<double> times;
+            for (auto i = 0; i < Nrepeats; ++i){
+                auto startTime = std::chrono::high_resolution_clock::now();
+                evaluate_parallel(Nthreads);
+                auto endTime = std::chrono::high_resolution_clock::now();
+                times.push_back(std::chrono::duration<double>(endTime - startTime).count());
+            }
+            return times;
+        }
+        // Return a vector of times for each repeat of calling evaluate_serial
+        std::vector<double> time_evaluate_serial(short Nrepeats){
+            std::vector<double> times;
+            for (auto i = 0; i < Nrepeats; ++i){
+                auto startTime = std::chrono::high_resolution_clock::now();
+                evaluate_serial(0,get_outputs_size(),0);
+                auto endTime = std::chrono::high_resolution_clock::now();
+                times.push_back(std::chrono::duration<double>(endTime - startTime).count());
+            }
+            return times;
+        }
 
-        /** 
+        /**
          * @brief Evaluate all the outputs in parallel
          * @param Nthreads The number of threads over which the calculations should be distributed
          */
         void evaluate_parallel(short Nthreads){
-            
+
             // Set up threads but put them in holding pattern
             // no-op if threads are already initialized
             setup_threads(Nthreads);
-            
+
             std::size_t Nmax = m_outputs.size();
             std::size_t Lchunk = Nmax / Nthreads;
-
-            auto &threads = m_pool->get_threads();
-            auto &outputs = m_outputs;
             
-            for (auto i = 0; i < threads.size(); ++i)
+            for (auto i = 0; i < Nthreads; ++i)
             {
-                std::size_t iStart = i*Lchunk;
+                auto itStart = m_outputs.begin() + i*Lchunk;
                 // The last thread gets the remainder, shorter than the others if N mod Nthreads != 0
                 // iEnd is NON-INCLUSIVE !!!!!!!!!!
-                std::size_t iEnd = ((i == Nthreads - 1) ? outputs.size() : (i + 1)*Lchunk);
-                std::function<void(void)> f = [&outputs, iStart, iEnd]() {
-                    for (std::size_t j = iStart; j < iEnd; ++j) {
+                auto itEnd = m_outputs.begin() + ((i == Nthreads - 1) ? Nmax : (i + 1)*Lchunk);
+                double &elapsed = m_times[i];
+                std::function<void(void)> f = [itStart, itEnd, &elapsed]() {
+                    auto startTime = std::chrono::high_resolution_clock::now();
+                    for (auto it = itStart; it != itEnd; ++it) {
                         try {
-                            outputs[j]->evaluate_one();
+                            (*it)->evaluate_one();
                         }
                         catch (...) {
-                            outputs[j]->exception_handler();
+                            (*it)->exception_handler();
                         }
                     }
+                    auto endTime = std::chrono::high_resolution_clock::now();
+                    elapsed = std::chrono::duration<double>(endTime - startTime).count();
                 };
                 m_pool->AddJob(f);
             }
@@ -194,7 +221,7 @@ namespace NISTfit{
          * Each entry in the Jacobian matrix is given by
          * \f[ J_{ij} = \frac{\partial r_i}{\partial c_j} \f]
          * where \f$r_i\f$ is the \f$i\f$-th residue and \f$c_j\f$ is the \f$j\f$-th coefficient
-         * 
+         *
          * It is constructed by taking the rows of the Jacobian matrix stored in instances of AbstractOutput
          */
         const Eigen::MatrixXd &get_Jacobian_matrix() {
@@ -233,7 +260,7 @@ namespace NISTfit{
         };
 
         /** @brief Construct the residual vector of residuals for each data point
-         * 
+         *
          * \f[ r_i = (y_{\rm model} - y_{\rm given})_i\f]
          *
          * Internally, the AbstractOutput::get_error() function is called on each AbstractOutput managed by this evaluator.  One 
@@ -249,12 +276,12 @@ namespace NISTfit{
         }
         /**
          * @brief Set affinity scheme that is to be used to determine which thread is connected to which processor
-         * 
-         * The indices in the vector are the indices for the first, second, third, etc. thread, 0-based.  For instance if you want 
+         *
+         * The indices in the vector are the indices for the first, second, third, etc. thread, 0-based.  For instance if you want
          * the affinity to go as the first thread on core 1, the first core on thread 2, etc., you might have: [0,2,4,6,1,3,5,7]
          */
         void set_affinity_scheme(const std::vector<int> &affinity_scheme){ m_affinity_scheme = affinity_scheme; };
-        /** 
+        /**
          * @brief Get the affinity scheme that is in use
          */
         const std::vector<int> & get_affinity_scheme() { return m_affinity_scheme; };
