@@ -250,7 +250,7 @@ void speedtest_decaying_exponential_finite_diff(short Nthread_max)
 }
 
 int main(){
-    short Nthread_max = std::min(static_cast<short>(16), static_cast<short>(std::thread::hardware_concurrency()));
+    short Nthread_max = std::min(static_cast<short>(32), static_cast<short>(std::thread::hardware_concurrency()));
 #ifdef NTHREAD_MAX
     Nthread_max = NTHREAD_MAX;
 #endif

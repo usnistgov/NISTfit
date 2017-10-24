@@ -35,6 +35,8 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
         for affinity in affinity_options:
             print(arg,affinity)
             
+            reject = int(0.1*Nrepeats)
+            
             # Serial evaluation
             eva, o.c0 = get_eva(arg)
             if affinity:
@@ -44,7 +46,7 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
             if method == 'evaluate':
                 times = eva.time_evaluate_serial(Nrepeats)
                 tic = 0
-                toc = np.mean(np.sort(times)[1:Nrepeats-1])*Nrepeats
+                toc = np.mean(np.sort(times)[reject:Nrepeats-reject])*Nrepeats
             elif method == 'LM':
                 o.threading = False
                 tic = timeit.default_timer()
@@ -61,6 +63,7 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
             # Parallel evaluation
             o.threading = True
             times = []
+            
             Nthreads_list = range(1, Nthreads_max+1)
             for Nthreads in Nthreads_list:
                 if Eigen_threads:
@@ -75,7 +78,7 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
                 if method == 'evaluate':
                     times = eva.time_evaluate_parallel(Nthreads, Nrepeats)
                     tic = 0
-                    toc = np.mean(np.sort(times)[1:Nrepeats-1])*Nrepeats
+                    toc = np.mean(np.sort(times)[reject:Nrepeats-reject])*Nrepeats
                 elif method == 'LM':
                     tic = timeit.default_timer()
                     for i in range(Nrepeats):
@@ -113,7 +116,7 @@ def plot_results(ofname):
         ax1.text(3,7,'Affinity',ha='left',va='center')
         ax1.text(3,6,'No affinity',ha='left',va='center')
 
-    for arg, c in zip(args,['b','r','c']):
+    for arg, c in zip(args,['b','r','c','k']):
         for affinity, dashes in affinity_options:
 
             # Extract data for this arg from the pandas DataFrame
@@ -169,5 +172,5 @@ if __name__=='__main__':
 
         ofname = method+'-speedup_decaying_exponential'
         generate_results(evaluators.get_eval_decaying_exponential, [200,50,5,-1], 
-                  ofname, Nthreads_max = Nthreads_max, method = method, Nrepeats = 100)
+                  ofname, Nthreads_max = Nthreads_max, method = method, Nrepeats = 1)
         plot_results(ofname)
