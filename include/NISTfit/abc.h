@@ -189,13 +189,22 @@ namespace NISTfit{
 
             std::size_t Nmax = m_outputs.size();
             std::size_t Lchunk = Nmax / Nthreads;
-            
+            std::vector<std::size_t> chunksizes(Nthreads, Lchunk);
+            long remainder = Nmax-Lchunk*Nthreads;
+            // Increase the first remainder chunk sizes
+            for (auto i = 0; i < remainder; ++i){
+                chunksizes[i]++;
+            }
+            assert(std::accumulate(chunksizes.begin(), chunksizes.end(), 0) == indices.size());
+            std::vector<double> times(Nthreads), summers(Nthreads);
+                
+            auto isum = 0;
             for (auto i = 0; i < Nthreads; ++i)
             {
-                auto itStart = m_outputs.begin() + i*Lchunk;
-                // The last thread gets the remainder, shorter than the others if N mod Nthreads != 0
-                // iEnd is NON-INCLUSIVE !!!!!!!!!!
-                auto itEnd = m_outputs.begin() + ((i == Nthreads - 1) ? Nmax : (i + 1)*Lchunk);
+                double cs = chunksizes[i];
+                auto itStart = m_outputs.begin() + isum;
+                auto itEnd = itStart + cs -1;// -1 because iEnd is NON-INCLUSIVE !!!!!!!!!!
+                isum += cs;
                 double &elapsed = m_times[i];
                 std::function<void(void)> f = [itStart, itEnd, &elapsed]() {
                     auto startTime = std::chrono::high_resolution_clock::now();
