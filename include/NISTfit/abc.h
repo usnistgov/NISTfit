@@ -190,18 +190,18 @@ namespace NISTfit{
             std::size_t Nmax = m_outputs.size();
             std::size_t Lchunk = Nmax / Nthreads;
             std::vector<std::size_t> chunksizes(Nthreads, Lchunk);
-            long remainder = Nmax-Lchunk*Nthreads;
+            auto remainder = Nmax-Lchunk*Nthreads;
             // Increase the first remainder chunk sizes
             for (auto i = 0; i < remainder; ++i){
                 chunksizes[i]++;
             }
-            assert(std::accumulate(chunksizes.begin(), chunksizes.end(), 0) == indices.size());
+            assert(std::accumulate(chunksizes.begin(), chunksizes.end(), static_cast<std::size_t>(0)) == m_outputs.size());
             std::vector<double> times(Nthreads), summers(Nthreads);
                 
-            auto isum = 0;
+            std::size_t isum = 0;
             for (auto i = 0; i < Nthreads; ++i)
             {
-                double cs = chunksizes[i];
+                auto cs = chunksizes[i];
                 auto itStart = m_outputs.begin() + isum;
                 auto itEnd = itStart + cs -1;// -1 because iEnd is NON-INCLUSIVE !!!!!!!!!!
                 isum += cs;
