@@ -16,11 +16,15 @@ import matplotlib.pyplot as plt
 import evaluators
 import NISTfit
 
+
+
 def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 8, 
-                     affinity = False, Nrepeats = 100, Eigen_threads = True):
+                     affinity = True, Nrepeats = 100, Eigen_threads = True):
 
     o = NISTfit.LevenbergMarquardtOptions()
     o.tau0 = 1
+
+    scheme = list(range(0,Nthreads_max,2)) + list(range(1,Nthreads_max,2))
 
     if affinity:
         affinity_options = [(True,()),(False,[2,2])]
@@ -32,7 +36,7 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
             'args' : args}
     
     for arg in args:
-        for affinity in affinity_options:
+        for affinity, affinity_dashes in affinity_options:
             print(arg,affinity)
             
             reject = int(0.1*Nrepeats)
@@ -40,7 +44,7 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
             # Serial evaluation
             eva, o.c0 = get_eva(arg)
             if affinity:
-                eva.set_affinity_scheme([0,2,4,6,1,3,5,7])
+                eva.set_affinity_scheme(scheme)
             eva.set_coefficients(o.c0)
             N = eva.get_outputs_size()
             if method == 'evaluate':
@@ -72,7 +76,7 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
                 o.Nthreads = Nthreads
                 eva.set_coefficients(o.c0)
                 if affinity:
-                    eva.set_affinity_scheme([0,2,4,6,1,3,5,7])
+                    eva.set_affinity_scheme(scheme)
                 elap = 0
                 cfinal = eva.evaluate_parallel(Nthreads)
                 if method == 'evaluate':
@@ -100,7 +104,6 @@ def plot_results(ofname):
 
     with open('timing-'+ofname+'.json') as fp:
         _data = json.load(fp)
-        affinity = _data['affinity']
         Nthreads_max = _data['Nthreads_max']
         Nthreads_list = range(1, Nthreads_max+1)
         affinity_options = _data['affinity_options']
@@ -110,7 +113,7 @@ def plot_results(ofname):
     fig1, ax1 = plt.subplots(1,1,figsize=(4,3))
     fig2, ax2 = plt.subplots(1,1,figsize=(4,3))
 
-    if affinity or len(affinity_options) > 1:
+    if np.sum(df.affinity)>0 or len(affinity_options) > 1:
         ax1.plot([2,2.9],[7,7],lw=1,color='grey')
         ax1.plot([2,2.9],[6,6],lw=1,color='grey',dashes = [2,2])
         ax1.text(3,7,'Affinity',ha='left',va='center')
@@ -120,8 +123,8 @@ def plot_results(ofname):
         for affinity, dashes in affinity_options:
 
             # Extract data for this arg from the pandas DataFrame
-            time_serial = float(df[(df.arg == arg) & (df.Nthreads == 0)].time)
-            times = np.array(df[(df.arg == arg) & (df.Nthreads >= 1)].time)
+            time_serial = float(df[(df.arg == arg) & (df.Nthreads == 0) & (df.affinity == affinity)].time)
+            times = np.array(df[(df.arg == arg) & (df.Nthreads >= 1) & (df.affinity == affinity)].time)
 
             line, = ax1.plot(Nthreads_list,time_serial/np.array(times),
                              color=c,dashes=dashes)
@@ -159,18 +162,27 @@ def plot_results(ofname):
     plt.close('all')
 
 if __name__=='__main__':
-    # Allow for the number of threads to be provided at the command line as the argument to this script
-    Nthreads_max = 8
-    if len(sys.argv) == 2:
-        Nthreads_max = int(sys.argv[-1])
+    
+    import argparse
+    parser = argparse.ArgumentParser(description='Run the generator for .')
+    parser.add_argument('Nthreads_max', metavar='Nthreads_max', type=int, nargs=1, help="The maximum number of threads")
+    parser.add_argument('--affinity-too', nargs='?', const=True, default=False, help="If defined, the affinity tests will also be run (windows only)")
+    args = parser.parse_args()
     
     for method in ['evaluate','LM']:
+        # Many fewer evaluations for LM than for normal evaluation
+        divisor = 1
+        if method == 'LM':
+            divisor = 10
+        print(args.affinity_too)
         ofname = method+'-speedup_polynomial'
         generate_results(evaluators.get_eval_poly, [120,12000], ofname,
-                         Nthreads_max = Nthreads_max, method = method, Nrepeats = 20)
+                         Nthreads_max = args.Nthreads_max[0], method = method, 
+                         Nrepeats = 200//divisor, affinity = args.affinity_too)
         plot_results(ofname)
 
         ofname = method+'-speedup_decaying_exponential'
-        generate_results(evaluators.get_eval_decaying_exponential, [200,50,5,-1], 
-                  ofname, Nthreads_max = Nthreads_max, method = method, Nrepeats = 1)
+        generate_results(evaluators.get_eval_decaying_exponential, [50,5,-1], 
+                         ofname, Nthreads_max = args.Nthreads_max[0], method = method,
+                         Nrepeats = 100//divisor, affinity= args.affinity_too)
         plot_results(ofname)
