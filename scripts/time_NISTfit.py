@@ -149,7 +149,7 @@ def plot_results(ofname):
 if __name__=='__main__':
     
     import argparse
-    parser = argparse.ArgumentParser(description='Run the generator for .')
+    parser = argparse.ArgumentParser(description='Run the timing tests for NISTfit')
     parser.add_argument('Nthreads_max', metavar='Nthreads_max', type=int, nargs=1, help="The maximum number of threads")
     parser.add_argument('--affinity-too', nargs='?', const=True, default=False, help="If defined, the affinity tests will also be run (windows only)")
     args = parser.parse_args()
