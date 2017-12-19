@@ -57,7 +57,7 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
                 times = NISTfit.time_LevenbergMarquardt(eva, o, Nrepeats)
             else:
                 raise ValueError("Bad method")
-            elap = np.median(np.sort(times)[reject:Nrepeats-reject])
+            elap = np.min(np.sort(times)[reject:Nrepeats-reject])
             
             data['times'].append(dict(arg=arg, type='serial', Nthreads = 0,
                                       time = elap, affinity = affinity))
@@ -81,7 +81,7 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
                     times = NISTfit.time_LevenbergMarquardt(eva, o, Nrepeats)
                 else:
                     raise ValueError("Bad method")
-                elap = np.median(np.sort(times)[reject:Nrepeats-reject])
+                elap = np.min(np.sort(times)[reject:Nrepeats-reject])
                 
                 data['times'].append(dict(arg=arg, type='parallel', 
                                           Nthreads=Nthreads, time=elap,
