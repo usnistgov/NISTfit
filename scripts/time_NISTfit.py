@@ -22,7 +22,12 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
     o = NISTfit.LevenbergMarquardtOptions()
     o.tau0 = 1
 
-    scheme = list(range(0,Nthreads_max,2)) + list(range(1,Nthreads_max,2))
+    windows_scheme = list(range(0,Nthreads_max,2)) + list(range(1,Nthreads_max,2))
+    linux_scheme = list(range(0,Nthreads_max))
+    if sys.platform.startswith('win'):
+        scheme = windows_scheme 
+    else:
+        scheme = linux_scheme
 
     if affinity:
         affinity_options = [(True,()),(False,[2,2])]
