@@ -15,6 +15,8 @@
 #include <windows.h>
 #undef NOMINMAX
 #undef WIN32_LEAN_AND_MEAN
+#else
+#include <pthread.h>
 #endif
 
 #include "Eigen/Dense"
@@ -88,6 +90,23 @@ namespace NISTfit{
                         // See http://stackoverflow.com/a/41574964/1360263
                         auto affinity_mask = (static_cast<DWORD_PTR>(1) << m_affinity_scheme[i]); //core number starts from 0
                         SetThreadAffinityMask(td.native_handle(), affinity_mask);
+                    }
+                }
+#else 
+                // See https://github.com/eliben/code-for-blog/blob/master/2016/threads-affinity/set-affinity.cpp (code in public domain)
+                // Create a cpu_set_t object representing a set of CPUs. Clear it and mark
+                // only CPU i as set.
+                if (!m_affinity_scheme.empty() {
+                    auto &threads = m_pool->get_threads();
+                    for (long i = 0; i < Nthreads; ++i) {
+                        cpu_set_t cpuset;
+                        CPU_ZERO(&cpuset);
+                        CPU_SET(m_affinity_scheme[i], &cpuset);
+                        int rc = pthread_setaffinity_np(threads[i].native_handle(),
+                                                        sizeof(cpu_set_t), &cpuset);
+                        if (rc != 0) {
+                          std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+                        }
                     }
                 }
 #endif
