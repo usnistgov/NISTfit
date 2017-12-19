@@ -96,7 +96,7 @@ namespace NISTfit{
                 // See https://github.com/eliben/code-for-blog/blob/master/2016/threads-affinity/set-affinity.cpp (code in public domain)
                 // Create a cpu_set_t object representing a set of CPUs. Clear it and mark
                 // only CPU i as set.
-                if (!m_affinity_scheme.empty() {
+                if (!m_affinity_scheme.empty()) {
                     auto &threads = m_pool->get_threads();
                     for (long i = 0; i < Nthreads; ++i) {
                         cpu_set_t cpuset;
