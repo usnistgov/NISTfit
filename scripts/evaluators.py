@@ -5,7 +5,7 @@ def get_eval_poly(Npoints):
     x = np.linspace(0,1,Npoints)
     y = 1 + 2*x + 3*x**2 + 4*x**6
     order = 6
-    outputs = [NISTfit.PolynomialOutput(order, NISTfit.NumericInput(_x, _y)) 
+    outputs = [NISTfit.PolynomialOutput(order, NISTfit.NumericInput(_x, _y))
                for _x,_y in zip(x, y)]
     eva = NISTfit.NumericEvaluator()
     eva.add_outputs(outputs)
@@ -13,9 +13,9 @@ def get_eval_poly(Npoints):
 
 def get_eval_decaying_exponential(Norder):
     a = 0.2; b = 3; c = 1.3;
-    x = np.linspace(0, 2, 320)
+    x = np.linspace(0, 2, 1200)
     y = np.exp(-a*x)*np.sin(b*x)*np.cos(c*x)
-    outputs = [NISTfit.DecayingExponentialOutput(Norder, NISTfit.NumericInput(_x, _y)) 
+    outputs = [NISTfit.DecayingExponentialOutput(Norder, NISTfit.NumericInput(_x, _y))
                for _x,_y in zip(x, y)]
     eva = NISTfit.NumericEvaluator()
     eva.add_outputs(outputs)
