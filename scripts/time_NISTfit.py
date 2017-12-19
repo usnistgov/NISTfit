@@ -16,8 +16,6 @@ import matplotlib.pyplot as plt
 import evaluators
 import NISTfit
 
-
-
 def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 8, 
                      affinity = True, Nrepeats = 100, Eigen_threads = True):
 
@@ -50,7 +48,7 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
             if method == 'evaluate':
                 times = eva.time_evaluate_serial(Nrepeats)
                 tic = 0
-                toc = np.mean(np.sort(times)[reject:Nrepeats-reject])*Nrepeats
+                toc = np.min(np.sort(times)[reject:Nrepeats-reject])*Nrepeats
             elif method == 'LM':
                 o.threading = False
                 tic = timeit.default_timer()
@@ -82,7 +80,7 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
                 if method == 'evaluate':
                     times = eva.time_evaluate_parallel(Nthreads, Nrepeats)
                     tic = 0
-                    toc = np.mean(np.sort(times)[reject:Nrepeats-reject])*Nrepeats
+                    toc = np.min(np.sort(times)[reject:Nrepeats-reject])*Nrepeats
                 elif method == 'LM':
                     tic = timeit.default_timer()
                     for i in range(Nrepeats):
