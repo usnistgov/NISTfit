@@ -15,6 +15,18 @@ namespace py = pybind11;
 
 using namespace NISTfit;
 
+std::vector<double> time_LevenbergMarquardt(std::shared_ptr<AbstractEvaluator> &E, LevenbergMarquardtOptions &options, long Nrepeats)
+{
+    std::vector<double> times;
+    for (auto i = 0; i < Nrepeats; ++i){
+        auto startTime = std::chrono::high_resolution_clock::now();
+        LevenbergMarquardt(E, options);
+        auto endTime = std::chrono::high_resolution_clock::now();
+        times.push_back(std::chrono::duration<double>(endTime - startTime).count());
+    }
+    return times;
+}
+
 double fit_decaying_exponential(bool threading, std::size_t Nmax, short Nthreads, long N, long Nrepeat)
 {
     double a = 0.2, b = 3, c = 1.3;
@@ -125,6 +137,7 @@ void init_fitter(py::module &m){
         ;
 
     m.def("LevenbergMarquardt", &LevenbergMarquardt, "Fit");
+    m.def("time_LevenbergMarquardt", &time_LevenbergMarquardt);
     m.def("fit_decaying_exponential", &fit_decaying_exponential);
 
     m.def("Eigen_nbThreads", [](){ return Eigen::nbThreads(); });

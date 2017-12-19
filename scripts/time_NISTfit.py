@@ -37,7 +37,7 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
         for affinity, affinity_dashes in affinity_options:
             print(arg,affinity)
             
-            reject = int(0.1*Nrepeats)
+            reject = int(0.0*Nrepeats)
             
             # Serial evaluation
             eva, o.c0 = get_eva(arg)
@@ -47,25 +47,18 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
             N = eva.get_outputs_size()
             if method == 'evaluate':
                 times = eva.time_evaluate_serial(Nrepeats)
-                tic = 0
-                toc = np.min(np.sort(times)[reject:Nrepeats-reject])*Nrepeats
             elif method == 'LM':
                 o.threading = False
-                tic = timeit.default_timer()
-                for i in range(Nrepeats):
-                    cfinal = NISTfit.LevenbergMarquardt(eva, o)
-                toc = timeit.default_timer()
+                times = NISTfit.time_LevenbergMarquardt(eva, o, Nrepeats)
             else:
                 raise ValueError("Bad method")
-            elap = toc-tic
-            time_serial = elap/Nrepeats
+            elap = np.median(np.sort(times)[reject:Nrepeats-reject])
+            
             data['times'].append(dict(arg=arg, type='serial', Nthreads = 0,
-                                      time = time_serial, affinity = affinity))
+                                      time = elap, affinity = affinity))
 
             # Parallel evaluation
             o.threading = True
-            times = []
-            
             Nthreads_list = range(1, Nthreads_max+1)
             for Nthreads in Nthreads_list:
                 if Eigen_threads:
@@ -75,24 +68,18 @@ def generate_results(get_eva, args, ofname, method = 'evaluate', Nthreads_max = 
                 eva.set_coefficients(o.c0)
                 if affinity:
                     eva.set_affinity_scheme(scheme)
-                elap = 0
+                elap = None
                 cfinal = eva.evaluate_parallel(Nthreads)
                 if method == 'evaluate':
                     times = eva.time_evaluate_parallel(Nthreads, Nrepeats)
-                    tic = 0
-                    toc = np.min(np.sort(times)[reject:Nrepeats-reject])*Nrepeats
                 elif method == 'LM':
-                    tic = timeit.default_timer()
-                    for i in range(Nrepeats):
-                        cfinal = NISTfit.LevenbergMarquardt(eva, o)
-                    toc = timeit.default_timer()
+                    times = NISTfit.time_LevenbergMarquardt(eva, o, Nrepeats)
                 else:
                     raise ValueError("Bad method")
-                elap = toc-tic
-                time_parallel = elap/Nrepeats
-                times.append(time_parallel)
+                elap = np.median(np.sort(times)[reject:Nrepeats-reject])
+                
                 data['times'].append(dict(arg=arg, type='parallel', 
-                                          Nthreads=Nthreads, time=time_parallel,
+                                          Nthreads=Nthreads, time=elap,
                                           affinity=affinity))
 
     with open('timing-'+ofname+'.json','w') as fp:
@@ -172,15 +159,14 @@ if __name__=='__main__':
         divisor = 1
         if method == 'LM':
             divisor = 10
-        print(args.affinity_too)
         ofname = method+'-speedup_polynomial'
         generate_results(evaluators.get_eval_poly, [120,12000], ofname,
                          Nthreads_max = args.Nthreads_max[0], method = method, 
-                         Nrepeats = 200//divisor, affinity = args.affinity_too)
+                         Nrepeats = 500//divisor, affinity = args.affinity_too)
         plot_results(ofname)
 
         ofname = method+'-speedup_decaying_exponential'
         generate_results(evaluators.get_eval_decaying_exponential, [50,5,-1], 
                          ofname, Nthreads_max = args.Nthreads_max[0], method = method,
-                         Nrepeats = 100//divisor, affinity= args.affinity_too)
+                         Nrepeats = 200//divisor, affinity= args.affinity_too)
         plot_results(ofname)
