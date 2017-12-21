@@ -4,3 +4,4 @@
 /include/NISTfit/*.TMP
 /NISTfit.egg-info
 /dist
+*.pyc

@@ -217,10 +217,10 @@ void speedtest_decaying_exponential(short Nthread_max)
     for (long N = 200; N <= 600; N += 20000) {
         long Nrepeats = 1;
         auto eval = build_eval(32000/*Nmax*/, N);
-        auto time_serial = eval_decaying_exponential(eval, Nrepeats, false, 1);
+        auto time_serial = eval_decaying_exponential(eval, static_cast<short>(Nrepeats), false, static_cast<short>(1));
         for (short Nthreads = 2; Nthreads <= Nthread_max; Nthreads += 1) {
             const bool threading = true;
-            auto time_parallel = eval_decaying_exponential(eval, Nrepeats, threading, Nthreads);
+            auto time_parallel = eval_decaying_exponential(eval, static_cast<short>(Nrepeats), threading, static_cast<short>(Nthreads));
             printf("%10d %10d %10.7f %10.7f(nothread) %10.7f(thread)\n", Nthreads, static_cast<int>(N), time_serial / time_parallel, time_serial, time_parallel);
         }
     }

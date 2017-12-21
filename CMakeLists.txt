@@ -1,5 +1,8 @@
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 3.0 FATAL_ERROR)
 project (NISTfit)
+
+# The version of NISTfit - see changelog for more information
+set(VERSION 1.0.0)
 
 # We heavily use C++11, C++11 support is required
 set (CMAKE_CXX_STANDARD 11)
@@ -37,6 +40,7 @@ if (NISTFIT_EXAMPLES)
         add_definitions(-DNTHREAD_MAX=${NISTFIT_NTHREAD_MAX})
     endif()
     add_libraries(simple)
+    set_target_properties(simple PROPERTIES VERSION ${VERSION})
 elseif (NISTFIT_STATIC_LIBRARY)
     add_library(NISTfit STATIC ${APP_SOURCES})
     # Add target include directories for easy linking with other applications

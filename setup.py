@@ -60,9 +60,18 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
 
+def get_version():
+    this_dir = os.path.abspath(os.path.dirname(__file__))
+    cmake_contents = open(os.path.join(this_dir,'CMakeLists.txt')).read()
+    matches = re.findall(r'set\(VERSION (.+)\)', cmake_contents)
+    if len(matches)==1:
+        return matches[0]
+    else:
+        raise ValueError('Was not able to extract version number from CMakeLists.txt')
+
 setup(
     name='NISTfit',
-    version='0.0.0',
+    version=get_version(),
     author='Ian Bell',
     author_email='ian.bell@nist.gov',
     description='Fitting tools developed at NIST (National Institute of Standards and Technology)',
