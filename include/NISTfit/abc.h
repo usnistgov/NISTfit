@@ -76,14 +76,14 @@ namespace NISTfit{
         */
         void setup_threads(short Nthreads) {
             
-            if (!m_pool || Nthreads != m_pool->get_threads().size()){
+            if (!m_pool || Nthreads != m_pool->GetThreads().size()){
                 // Make a thread pool for the workers
                 m_pool = std::unique_ptr<ThreadPool>(new ThreadPool(Nthreads));
                 m_times.resize(Nthreads);
       
                 // Set the thread affinity if desired
 #if defined(WIN32)
-                auto &threads = m_pool->get_threads();
+                auto &threads = m_pool->GetThreads();
                 for (long i = 0; i < Nthreads; ++i) {
                     std::thread &td = threads[i];
                     if (!m_affinity_scheme.empty() && i <= m_affinity_scheme.size()) {
@@ -97,7 +97,7 @@ namespace NISTfit{
                 // Create a cpu_set_t object representing a set of CPUs. Clear it and mark
                 // only CPU i as set.
                 if (!m_affinity_scheme.empty()) {
-                    auto &threads = m_pool->get_threads();
+                    auto &threads = m_pool->GetThreads();
                     for (long i = 0; i < Nthreads; ++i) {
                         cpu_set_t cpuset;
                         CPU_ZERO(&cpuset);
