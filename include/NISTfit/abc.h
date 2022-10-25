@@ -222,12 +222,14 @@ namespace NISTfit{
             {
                 auto cs = chunksizes[i];
                 auto itStart = m_outputs.begin() + isum;
-                auto itEnd = itStart + cs -1;// -1 because iEnd is NON-INCLUSIVE !!!!!!!!!!
+                auto itEnd = itStart + cs;
                 isum += cs;
                 double &elapsed = m_times[i];
-                std::function<void(void)> f = [itStart, itEnd, &elapsed]() {
+                int count = 0;
+                std::function<void(void)> f = [itStart, itEnd, &elapsed, &count, &cs]() {
                     auto startTime = std::chrono::high_resolution_clock::now();
                     for (auto it = itStart; it != itEnd; ++it) {
+                        count += 1;
                         try {
                             (*it)->evaluate_one();
                         }
@@ -237,6 +239,9 @@ namespace NISTfit{
                     }
                     auto endTime = std::chrono::high_resolution_clock::now();
                     elapsed = std::chrono::duration<double>(endTime - startTime).count();
+                    if (count != cs){
+                        throw std::invalid_argument("Wrong number of elements were evaluated");
+                    }
                 };
                 m_pool->AddJob(f);
             }
