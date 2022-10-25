@@ -220,14 +220,15 @@ namespace NISTfit{
             std::size_t isum = 0;
             for (auto i = 0; i < Nthreads; ++i)
             {
-                auto cs = chunksizes[i];
+                const auto cs = chunksizes[i];
                 auto itStart = m_outputs.begin() + isum;
                 auto itEnd = itStart + cs;
                 isum += cs;
                 double &elapsed = m_times[i];
-                int count = 0;
-                std::function<void(void)> f = [itStart, itEnd, &elapsed, &count, &cs]() {
+                
+                std::function<void(void)> f = [itStart, itEnd, &elapsed, cs]() {
                     auto startTime = std::chrono::high_resolution_clock::now();
+                    int count = 0;
                     for (auto it = itStart; it != itEnd; ++it) {
                         count += 1;
                         try {
