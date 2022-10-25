@@ -92,7 +92,7 @@ namespace NISTfit{
                         SetThreadAffinityMask(td.native_handle(), affinity_mask);
                     }
                 }
-#else 
+#elif !defined(__APPLE__)
                 // See https://github.com/eliben/code-for-blog/blob/master/2016/threads-affinity/set-affinity.cpp (code in public domain)
                 // Create a cpu_set_t object representing a set of CPUs. Clear it and mark
                 // only CPU i as set.
