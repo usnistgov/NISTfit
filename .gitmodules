@@ -4,3 +4,6 @@
 [submodule "externals/ThreadPool2"]
 	path = externals/ThreadPool2
 	url = https://github.com/domgho/ThreadPool2.git
+[submodule "externals/pybind11"]
+	path = externals/pybind11
+	url = https://github.com/pybind/pybind11.git
