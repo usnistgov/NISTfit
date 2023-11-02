@@ -33,7 +33,7 @@ CXX=icc python setup.py install
 
 Alternatively, you can checkout and install in one fell swoop with:
 ```
-pip install git+git://github.com/usnistgov/NISTfit.git
+pip install git+https://github.com/usnistgov/NISTfit.git
 ```
   
 ## License
